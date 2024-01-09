@@ -1,11 +1,17 @@
 
 import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3
 
-import Bio, Bio.PDB
+import Bio, Bio.PDB, Bio.SVDSuperimposer
+import prody
+
+__all__ = ['RANDOM_SEED']
+# Fix `RANDOM_SEED` for (partial) reproducibility
+RANDOM_SEED = 4 # https://xkcd.com/221
 
 __all__ = ['workpath']
 def workpath(path):
-    dir_ = os.path.dirname(__file__)
+    #dir_ = os.path.dirname(__file__)
+    dir_ = '/cluster/work/beltrao/jjaenes'
     return os.path.join(dir_, path)
 
 __all__.append('uf')
@@ -426,3 +432,41 @@ def to_pymol_pocket(struct_id, pocket_id, transparency=0.5, color='tab_blue'):
     print(f'show surface, {pocket_name}')
     print(f'set transparency, {transparency}, {pocket_name}')
     print(f'color {color}, {pocket_name}')
+
+def read_chain_CA(fp_, chain_):
+    # get CA coordinate matrix of a specific chain
+    structure_ = Bio.PDB.PDBParser(QUIET=True).get_structure(fp_, fp_)
+    return np.array([residue['CA'].coord for residue in structure_[0][chain_]]) #https://biopython.org/DIST/docs/tutorial/Tutorial.html#sec203
+
+"""
+def rmsd_(r1_, r2_):
+    # align & calculate rmsd for two structures
+    coord1_ = read_chain_CA(r1_.pdb, r1_.bait_chain)
+    coord2_ = read_chain_CA(r2_.pdb, r2_.bait_chain)
+    #print(coord1_.shape)
+    #print(coord2_.shape)
+
+    sup = Bio.SVDSuperimposer.SVDSuperimposer()
+    sup.set(coord1_, coord2_)
+    sup.run()
+    print(sup.get_init_rms(), sup.get_rms())
+"""
+__all__.append('bait_rmsd')
+def bait_rmsd(fpA, fpB):
+    # RMSD of (shared) chain
+    #fpA = bait_.df_bait_id.iloc[0].pdb
+    #fpB = bait_.df_bait_id.iloc[9].pdb
+    pdbA = prody.parsePDB(fpA)
+    pdbB = prody.parsePDB(fpB)
+    pdbAm, pdbBm, seqid, overlap = prody.matchChains(pdbA, pdbB)[0]
+    rmsd_pre_ = prody.calcRMSD(pdbAm, pdbBm)
+    pdbAm, transformation = prody.superpose(pdbAm, pdbBm)
+    rmsd_post_ = prody.calcRMSD(pdbAm, pdbBm)
+    #print(rmsd_pre_, rmsd_post_)
+    return rmsd_post_
+
+__all__.append('read_chain_len')
+def read_chain_len(fp_, chain_):
+    # number of residues in a chain
+    structure_ = Bio.PDB.PDBParser(QUIET=True).get_structure(fp_, fp_)
+    return len([residue['CA'].coord for residue in structure_[0][chain_]]) #https://biopython.org/DIST/docs/tutorial/Tutorial.html#sec203
