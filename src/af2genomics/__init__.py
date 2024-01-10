@@ -1,6 +1,7 @@
 
 import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3
 
+import scipy as sp, scipy.stats
 import Bio, Bio.PDB, Bio.SVDSuperimposer
 import prody
 
@@ -470,3 +471,56 @@ def read_chain_len(fp_, chain_):
     # number of residues in a chain
     structure_ = Bio.PDB.PDBParser(QUIET=True).get_structure(fp_, fp_)
     return len([residue['CA'].coord for residue in structure_[0][chain_]]) #https://biopython.org/DIST/docs/tutorial/Tutorial.html#sec203
+
+__all__.append('parse_varstr')
+def parse_varstr(s):
+    # df_var[['uniprot_id', 'aa_pos', 'aa_ref', 'aa_alt']] = df_var.apply(lambda r: parse_varstr(r['protein_variant']), axis=1, result_type='expand')
+    uniprot_id, variant_id = s.split('/')
+    aa_pos = variant_id[1:-1]
+    aa_ref = variant_id[0]
+    aa_alt = variant_id[-1]
+    #print(uniprot_id, aa_pos, aa_ref, aa_alt)
+    return uniprot_id, aa_pos, aa_ref, aa_alt
+
+__all__.append('VariantEnrichment')
+class VariantEnrichment:
+    # struct_data, struct_uniprot_id, struct_resid
+    # var_data, var_uniprot_id, var_resid
+    def __init__(self, struct_data, struct_uniprot_id, struct_resid, struct_bin, var_data, var_uniprot_id, var_resid):
+        self.struct_data = struct_data[[struct_uniprot_id, struct_resid, struct_bin]].copy().rename({struct_uniprot_id: 'struct_uniprot_id', struct_resid: 'struct_resid', struct_bin: 'struct_bin'}, axis=1)
+        self.struct_data['struct_resid'] = self.struct_data['struct_resid'].map(parse_resid)
+
+        # Attach set of all residues
+        df_af2 = pd.read_csv('results/23.04_bindfunc/af2.tsv', sep='\t').query('n_frags == 1')[['uniprot_id', 'n_resid']]
+        df_af2['resid'] = df_af2['n_resid'].map(lambda n_resid: set(range(1, n_resid + 1)))
+        self.struct_data = self.struct_data.merge(df_af2[['uniprot_id', 'resid']], left_on='struct_uniprot_id', right_on='uniprot_id').drop(['uniprot_id'], axis=1)
+
+        self.var_data = var_data[[var_uniprot_id, var_resid]].copy().rename({var_uniprot_id: 'var_uniprot_id', var_resid: 'var_resid'}, axis=1)
+        #self.var_data['var_resid'] = self.var_data['var_resid'].map(parse_resid)
+
+        self.merge_data = self.struct_data.merge(self.var_data, left_on='struct_uniprot_id', right_on='var_uniprot_id', how='left')
+        def fillna_(x): return x if x == x else set()
+        self.merge_data['var_uniprot_id'] = self.merge_data['var_uniprot_id'].map(fillna_)
+        self.merge_data['var_resid'] = self.merge_data['var_resid'].map(fillna_)
+
+        self.merge_data['n_struct_var'] = self.merge_data.apply(lambda r: len(r['struct_resid'] & r['var_resid']), axis=1)
+        self.merge_data['n_struct_novar'] = self.merge_data.apply(lambda r: len(r['struct_resid'] - r['var_resid']), axis=1)
+        self.merge_data['n_nostruct_var'] = self.merge_data.apply(lambda r: len((r['resid'] - r['struct_resid']) & r['var_resid']), axis=1)
+        self.merge_data['n_nostruct_novar'] = self.merge_data.apply(lambda r: len((r['resid'] - r['struct_resid']) - r['var_resid']), axis=1)
+
+    def fisher_exact_(k, l, m, n):
+        return sp.stats.fisher_exact([[k, l], [m, n]])
+
+    def fisher_exact(self):
+        self.merge_data_sums_ = self.merge_data[['n_struct_var', 'n_struct_novar', 'n_nostruct_var', 'n_nostruct_novar']].sum(axis=0)
+        return VariantEnrichment.fisher_exact_(
+            k=self.merge_data_sums_.n_struct_var,
+            l=self.merge_data_sums_.n_struct_novar,
+            m=self.merge_data_sums_.n_nostruct_var,
+            n=self.merge_data_sums_.n_nostruct_novar,
+        )
+
+    def fisher_exact_groupby(self):
+        sums_ = self.merge_data.groupby('struct_bin')[['n_struct_var', 'n_struct_novar', 'n_nostruct_var', 'n_nostruct_novar']].sum()
+        sums_[['statistic', 'pvalue']] = sums_.apply(lambda r: VariantEnrichment.fisher_exact_(r.n_struct_var, r.n_struct_novar, r.n_nostruct_var, r.n_nostruct_novar), axis=1, result_type='expand')
+        return sums_
