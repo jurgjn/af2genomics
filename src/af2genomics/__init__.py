@@ -317,6 +317,15 @@ def af2_uniprot_id():
     # AF2 human single-fragment structures (set used for pocket detection, interface modelling, etc)
     return set(read_structures()['uniprot_id'])
 
+__all__.append('read_tissue_coabundance')
+@functools.cache
+def read_tissue_coabundance():
+    fp_ = workpath('24.01.17_coabundances/DLT240108_tissue_coabundance_for_interfaces_af2_human_24.01.08.csv')
+    df_ = pd.read_csv(fp_).drop(['prot1', 'prot2', 'protein1', 'protein2'], axis=1)
+    cols_ = ['blood', 'brain', 'breast', 'colon', 'kidney', 'liver', 'lung', 'ovary', 'pancreas', 'stomach', 'throat']
+    df_['co_abundance'] = df_[cols_].mean(axis=1)
+    return df_
+
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
