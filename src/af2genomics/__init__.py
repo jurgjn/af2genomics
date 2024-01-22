@@ -583,10 +583,12 @@ class SharedInterfaceAnalysis():
                 None => show pymol commands to execute locally
                 file name => execute pymol on the cluster & store session as .pse
         """
-        df_interactors_top = self.df_interactors.sort_values('pdockq', ascending=False).groupby('labels').head(1) # Align to top interaction model
+        #df_interactors_top = self.df_interactors.sort_values('pdockq', ascending=False).groupby('labels').head(1) # Align to top interaction model
+        df_interactors_top = self.df_interactors.sort_values(['labels', 'pdockq'], ascending=False)#.head(1) # Align to top interaction model
 
         cmd_ = []
         cmd_.append('delete all')
+        cmd_.append('bg_color white')
         for i, r in df_interactors_top.iterrows():
             if fname is None:
                 fp_ = os.path.join('~/work-euler/', r.pdb.removeprefix('/cluster/work/beltrao/jjaenes/'))
@@ -608,6 +610,11 @@ class SharedInterfaceAnalysis():
             else:
                 cmd_.append(f'color {col_}, {r.interaction_id} & chain A')
                 cmd_.append(f'color gray, {r.interaction_id} & chain B')
+
+        for label, df_label in df_interactors_top.groupby('labels'):
+            name = f'cluster{label}'
+            members = ' '.join(df_label['interaction_id'])
+            cmd_.append(f'group {name}, {members}')
 
         if fname is None:
             print('\n'.join(cmd_))
