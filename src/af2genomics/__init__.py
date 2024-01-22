@@ -1,7 +1,7 @@
 
-import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3
+import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess
 
-import scipy as sp, scipy.stats
+import scipy as sp, scipy.stats, matplotlib, matplotlib.pyplot as plt, seaborn as sns
 import Bio, Bio.PDB, Bio.SVDSuperimposer
 import prody
 
@@ -9,7 +9,7 @@ __all__ = ['RANDOM_SEED']
 # Fix `RANDOM_SEED` for (partial) reproducibility
 RANDOM_SEED = 4 # https://xkcd.com/221
 
-__all__ = ['workpath']
+__all__.append('workpath')
 def workpath(path):
     #dir_ = os.path.dirname(__file__)
     dir_ = '/cluster/work/beltrao/jjaenes'
@@ -533,3 +533,84 @@ class VariantEnrichment:
         sums_ = self.merge_data.groupby('struct_bin')[['n_struct_var', 'n_struct_novar', 'n_nostruct_var', 'n_nostruct_novar']].sum()
         sums_[['statistic', 'pvalue']] = sums_.apply(lambda r: VariantEnrichment.fisher_exact_(r.n_struct_var, r.n_struct_novar, r.n_nostruct_var, r.n_nostruct_novar), axis=1, result_type='expand')
         return sums_
+
+__all__.append('run_pymol')
+def run_pymol(cmds):
+    s_ = subprocess.run('module load gcc/6.3.0 pymol; pymol -cpQ', input='\n'.join(cmds), text=True, shell=True, capture_output=True)
+    return s_
+
+__all__.append('SharedInterfaceAnalysis')
+class SharedInterfaceAnalysis():
+    def __init__(self, df_interactors):
+        def apply_(r):
+            return [resid in parse_resid(r['bait_ifresid']) for resid in range(1, self.nresid_bait + 1)]
+
+        self.uniprot_id_bait = df_interactors.head(1)['bait_id'].squeeze()
+        print(self.uniprot_id_bait, 'bait uniprot id')
+        self.df_interactors = df_interactors.copy()
+        printlen(self.df_interactors, 'interaction models sharing the bait')
+        self.nresid_bait = read_chain_len(self.df_interactors.head(1).pdb.squeeze(), self.df_interactors.head(1).bait_chain.squeeze())
+        print(self.nresid_bait, 'number of bait residues')
+        self.df_matrix = pd.DataFrame(self.df_interactors.apply(apply_, axis=1).to_list(), index=self.df_interactors['interactor_id'], columns=range(1, self.nresid_bait + 1))
+        print(self.df_matrix.shape, 'shape matrix dimensions')
+        print(sum(self.df_matrix), 'non-zero entries in residue matrix')
+
+    def linkage(self, criterion, t):
+        self.linkage_ = scipy.cluster.hierarchy.linkage(self.df_matrix, method='average', metric='jaccard')
+        #self.df_interactors['labels'] = scipy.cluster.hierarchy.fcluster(Z=self.linkage_, criterion='distance', t=.95)
+        #self.df_interactors['labels'] = scipy.cluster.hierarchy.fcluster(Z=self.linkage_, criterion='maxclust', t=2)
+        self.df_interactors['labels'] = scipy.cluster.hierarchy.fcluster(Z=self.linkage_, criterion=criterion, t=t)
+        print(self.df_interactors['labels'].value_counts())
+
+    #def plot_clustermap_default(self):
+    #    sns.clustermap(self.df_matrix, metric='jaccard', row_cluster=True, col_cluster=False, cbar_pos=None, figsize=(8,4))
+
+    def clustermap(self, fname=None):
+        row_colors_ = [* self.df_interactors['labels'].map(lambda label: matplotlib.colormaps['tab10'].colors[label - 1]) ]
+        if not (fname is None):
+            plt.ioff()
+
+        self.clustermap_ = sns.clustermap(self.df_matrix, row_linkage=self.linkage_, col_cluster=False, cbar_pos=None, figsize=(8,4), row_colors=row_colors_)
+        plt.title(self.uniprot_id_bait)
+        if not (fname is None):
+            plt.savefig(fname, bbox_inches='tight', transparent=True)
+            plt.clf()
+            plt.ion()
+
+    def to_pymol(self, fname=None):
+        """
+            fname is:
+                None => show pymol commands to execute locally
+                file name => execute pymol on the cluster & store session as .pse
+        """
+        df_interactors_top = self.df_interactors.sort_values('pdockq', ascending=False).groupby('labels').head(1) # Align to top interaction model
+
+        cmd_ = []
+        cmd_.append('delete all')
+        for i, r in df_interactors_top.iterrows():
+            if fname is None:
+                fp_ = os.path.join('~/work-euler/', r.pdb.removeprefix('/cluster/work/beltrao/jjaenes/'))
+            else:
+                fp_ = r.pdb
+
+            cmd_.append(f'load {fp_}')
+
+            if r.interaction_id != df_interactors_top.head(1)['interaction_id'].squeeze():
+                cmd_.append(f'align {r.interaction_id} & chain {r.bait_chain}, {df_interactors_top.head(1)["interaction_id"].squeeze()} & chain {df_interactors_top.head(1)["bait_chain"].squeeze()}')
+
+            col_ = '0x' + matplotlib.colors.to_hex(matplotlib.colormaps['tab10'].colors[r.labels - 1])[1:]
+            #print(col_)
+
+            bait_id_ = df_interactors_top.head(1).bait_id.squeeze()
+            if r.interaction_id.startswith(bait_id_):
+                cmd_.append(f'color gray, {r.interaction_id} & chain A')
+                cmd_.append(f'color {col_}, {r.interaction_id} & chain B')
+            else:
+                cmd_.append(f'color {col_}, {r.interaction_id} & chain A')
+                cmd_.append(f'color gray, {r.interaction_id} & chain B')
+
+        if fname is None:
+            print('\n'.join(cmd_))
+        else:
+            cmd_.append(f'save {fname}')
+            run_pymol(cmd_)
