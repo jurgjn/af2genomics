@@ -1,8 +1,7 @@
 
 import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess
-
-import scipy as sp, scipy.stats, matplotlib, matplotlib.pyplot as plt, seaborn as sns
-import Bio, Bio.PDB, Bio.SVDSuperimposer
+import numpy as np, scipy as sp, scipy.stats, matplotlib, matplotlib.pyplot as plt, seaborn as sns
+import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
 import prody
 
 __all__ = ['RANDOM_SEED']
@@ -179,6 +178,8 @@ def parse_resid(s):
     parse_resid('{1,2,3,4}')
     parse_resid('[1,2,3,4]')
     """
+    if isinstance(s, list) or isinstance(s, np.ndarray):
+        return s
     if s == '' or s != s:
         return set()
     x = ast.literal_eval(s)
@@ -372,7 +373,7 @@ def read_ppi_reselect():
         'chain.1': 'chain2',
         'residues.1': 'residues2',
     }, axis=1)
-    printlen(df_, 'raw records')
+    printlen(df_, 'raw records from', fp_)
 
     def parse_(s_):
         l_id_ = s_.split('_')
@@ -383,8 +384,9 @@ def read_ppi_reselect():
     df_.insert(0, 'interaction_id', [* df_['pair'].map(parse_) ])
     df_ = df_.query('interaction_id != "."').copy()
     printlen(df_, 'after discarding non-dimers')
-    df_[['uniprot_id_A', 'uniprot_id_B']] = df_['interaction_id'].str.split('_', expand=True)
-    df_ = df_.query('(uniprot_id_A in @af2_uniprot_id()) & (uniprot_id_B in @af2_uniprot_id())').copy()
+    df_[['pair1', 'pair2']] = df_['pair'].str.split('_', expand=True)
+    #return df_
+    df_ = df_.query('(protein1 in @af2_uniprot_id()) & (protein2 in @af2_uniprot_id())').copy()
     printlen(df_, 'after keeping uniprot_id-s in AF2 single fragment structures')
     df_ = df_.drop_duplicates(subset=['interaction_id'], keep='first')
     printlen(df_, 'after naive de-duplication of interaction_id')
@@ -541,21 +543,32 @@ def run_pymol(cmds):
 
 __all__.append('SharedInterfaceAnalysis')
 class SharedInterfaceAnalysis():
+    """
+    def resid_updated_(r):
+    res_A, res_B = calc_interface_residues(r.pdb, dist_threshold=5, plddt_threshold=0)
+    if r.bait_chain == 'A':
+        return res_A
+    else:
+        return res_B
+    bait_.df_interactors['bait_ifresid'] = [ resid_updated_(r) for i, r in bait_.df_interactors.iterrows() ]
+    """
     def __init__(self, df_interactors):
-        def apply_(r):
-            return [resid in parse_resid(r['bait_ifresid']) for resid in range(1, self.nresid_bait + 1)]
-
         self.uniprot_id_bait = df_interactors.head(1)['bait_id'].squeeze()
         print(self.uniprot_id_bait, 'bait uniprot id')
         self.df_interactors = df_interactors.copy()
         printlen(self.df_interactors, 'interaction models sharing the bait')
         self.nresid_bait = read_chain_len(self.df_interactors.head(1).pdb.squeeze(), self.df_interactors.head(1).bait_chain.squeeze())
         print(self.nresid_bait, 'number of bait residues')
+
+    def build_matrix(self):
+        def apply_(r):
+            return [resid in parse_resid(r['bait_ifresid']) for resid in range(1, self.nresid_bait + 1)]
+
         self.df_matrix = pd.DataFrame(self.df_interactors.apply(apply_, axis=1).to_list(), index=self.df_interactors['interactor_id'], columns=range(1, self.nresid_bait + 1))
         print(self.df_matrix.shape, 'shape matrix dimensions')
         print(sum(self.df_matrix), 'non-zero entries in residue matrix')
 
-    def linkage(self, criterion, t):
+    def linkage(self, criterion='distance', t=.9):
         self.linkage_ = scipy.cluster.hierarchy.linkage(self.df_matrix, method='average', metric='jaccard')
         #self.df_interactors['labels'] = scipy.cluster.hierarchy.fcluster(Z=self.linkage_, criterion='distance', t=.95)
         #self.df_interactors['labels'] = scipy.cluster.hierarchy.fcluster(Z=self.linkage_, criterion='maxclust', t=2)
@@ -585,31 +598,35 @@ class SharedInterfaceAnalysis():
         """
         #df_interactors_top = self.df_interactors.sort_values('pdockq', ascending=False).groupby('labels').head(1) # Align to top interaction model
         df_interactors_top = self.df_interactors.sort_values(['labels', 'pdockq'], ascending=False)#.head(1) # Align to top interaction model
-
         cmd_ = []
         cmd_.append('delete all')
         cmd_.append('bg_color white')
+        ref_ = df_interactors_top.head(1).squeeze() # Reference structure to align against
         for i, r in df_interactors_top.iterrows():
             if fname is None:
                 fp_ = os.path.join('~/work-euler/', r.pdb.removeprefix('/cluster/work/beltrao/jjaenes/'))
             else:
                 fp_ = r.pdb
-
             cmd_.append(f'load {fp_}')
 
-            if r.interaction_id != df_interactors_top.head(1)['interaction_id'].squeeze():
-                cmd_.append(f'align {r.interaction_id} & chain {r.bait_chain}, {df_interactors_top.head(1)["interaction_id"].squeeze()} & chain {df_interactors_top.head(1)["bait_chain"].squeeze()}')
+            if r.interaction_id != ref_['interaction_id']:
+                #cmd_.append(f'align {r.interaction_id} & chain {r.bait_chain}, {ref_.interaction_id} & chain {ref_.bait_chain}')
+                #chain_ = 'A' if r.interaction_id.startswith(r.bait_id) else 'B'
+                #chain_ref_ = 'A' if ref_.interaction_id.startswith(ref_.bait_id) else 'B'
+
+                cmd_.append(f'align {r.interaction_id} & chain {r.bait_chain}, {ref_.interaction_id} & chain {ref_.bait_chain}')
 
             col_ = '0x' + matplotlib.colors.to_hex(matplotlib.colormaps['tab10'].colors[r.labels - 1])[1:]
-            #print(col_)
+            interactor_chain = 'B' if r.bait_chain == 'A' else 'A'
+            cmd_.append(f'color gray, {r.interaction_id} & chain {r.bait_chain}')
+            cmd_.append(f'color {col_}, {r.interaction_id} & chain {interactor_chain}')
 
-            bait_id_ = df_interactors_top.head(1).bait_id.squeeze()
-            if r.interaction_id.startswith(bait_id_):
-                cmd_.append(f'color gray, {r.interaction_id} & chain A')
-                cmd_.append(f'color {col_}, {r.interaction_id} & chain B')
-            else:
-                cmd_.append(f'color {col_}, {r.interaction_id} & chain A')
-                cmd_.append(f'color gray, {r.interaction_id} & chain B')
+            #if r.interaction_id.startswith(ref_.bait_id):
+            #    cmd_.append(f'color gray, {r.interaction_id} & chain A')
+            #    cmd_.append(f'color {col_}, {r.interaction_id} & chain B')
+            #else:
+            #    cmd_.append(f'color {col_}, {r.interaction_id} & chain A')
+            #    cmd_.append(f'color gray, {r.interaction_id} & chain B')
 
         for label, df_label in df_interactors_top.groupby('labels'):
             name = f'cluster{label}'
@@ -621,3 +638,76 @@ class SharedInterfaceAnalysis():
         else:
             cmd_.append(f'save {fname}')
             run_pymol(cmd_)
+
+# Adapted from: https://warwick.ac.uk/fac/sci/moac/people/students/peter_cock/python/protein_contact_map/
+def calc_residue_dist(residue_one, residue_two):
+	"""Returns the C-alpha distance between two residues (C-alpha)"""
+	diff_vector  = residue_one["CA"].coord - residue_two["CA"].coord
+	return np.sqrt(np.sum(diff_vector * diff_vector))
+
+def calc_residue_dist_all(residue_one, residue_two):
+	"""Returns the C-alpha distance between two residues (all-atom)"""
+	min_dist = float('inf')
+	for atom_one in residue_one:
+		for atom_two in residue_two:
+			diff_vector = atom_one.coord - atom_two.coord
+			min_dist = min(min_dist, np.sum(diff_vector * diff_vector))
+	return np.sqrt(min_dist)
+
+def calc_dist_matrix(chain_one, chain_two):
+	"""Returns a matrix of C-alpha distances between two chains"""
+	answer = np.zeros((len(chain_one), len(chain_two)), float)
+	for row, residue_one in enumerate(chain_one) :
+		for col, residue_two in enumerate(chain_two) :
+			#answer[row, col] = calc_residue_dist(residue_one, residue_two)
+			answer[row, col] = calc_residue_dist_all(residue_one, residue_two)
+	return answer
+
+def calc_plddt_matrix(chain_one, chain_two):
+    """Returns a matrix of C-alpha distances between two chains"""
+    answer = np.zeros((len(chain_one), len(chain_two)), float)
+    for row, residue_one in enumerate(chain_one):
+        for col, residue_two in enumerate(chain_two):
+            for atom in residue_one:
+                bfactor1 = atom.bfactor
+            for atom in residue_two:
+                bfactor2 = atom.bfactor
+            answer[row, col] = min(bfactor1, bfactor2)
+    return answer
+
+__all__.append('calc_interface_residues')
+def calc_interface_residues(fname, dist_threshold=5.0, plddt_threshold=70):
+    """
+    res_A, res_B, dist_, plddt_ = calc_interface_residues('/cluster/work/beltrao/jjaenes/23.12.06_ppi_reselect/af2-models-split/P62306/P62306_Q9Y333.pdb', plddt_threshold=70)
+    """
+    # all-to-all with dist_threshold 5, 8, 10 re-produces read_ppi_reselect()
+    #pdb_code = 'P06730_Q9NRG4'
+    #pdb_filename = 'P06730_Q9NRG4.pdb'
+    structure = Bio.PDB.PDBParser(QUIET=True).get_structure(fname, fname)
+    model = structure[0]
+
+    dist_matrix = calc_dist_matrix(model['A'], model['B'])
+    plddt_matrix = calc_plddt_matrix(model['A'], model['B'])
+
+    contact_map = (dist_matrix <= dist_threshold)
+    contact_map = (dist_matrix <= dist_threshold) & (plddt_matrix > plddt_threshold)
+
+    #print("Minimum distance", numpy.min(dist_matrix))
+    #print("Maximum distance", numpy.max(dist_matrix))
+    res_A = np.squeeze(np.where(np.any(contact_map, axis=1))) + 1
+    res_B = np.squeeze(np.where(np.any(contact_map, axis=0))) + 1
+    #print('A:', res_A)
+    #print('B:', res_B)
+    return res_A, res_B#, dist_matrix, plddt_matrix
+
+__all__.append('get_chain_seq')
+def get_chain_seq(fname, target_chain):
+    seq = ''
+    parser = Bio.PDB.PDBParser(QUIET=True)
+    structure = parser.get_structure(fname, fname)
+    for chains in structure:
+        for chain in chains:
+            if chain.id == target_chain:
+                for residue in chain:
+                    seq += residue.get_resname()
+    return Bio.SeqUtils.seq1(seq)
