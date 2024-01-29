@@ -1,5 +1,5 @@
 
-import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess
+import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess, zipfile
 import numpy as np, scipy as sp, scipy.stats, matplotlib, matplotlib.pyplot as plt, seaborn as sns
 import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
 import prody
@@ -42,7 +42,10 @@ def printsrc(*args, **kwargs):
 __all__.append('printlen')
 def printlen(x, *args, **kwargs):
     # printlen(af2_uniprot_id(), 'human AF2 single-fragment structures')
-    print(uf(len(x)), *args, **kwargs)
+    print(
+        f'{inspect.stack()[1][3]}:', #https://stackoverflow.com/questions/5067604/determine-function-name-from-within-that-function-without-using-traceback
+        uf(len(x)),
+    *args, **kwargs)
 
 def penc(s):
     """Encode exotic characters within identifiers using percent-encoding, e.g.:
@@ -327,6 +330,7 @@ def read_tissue_coabundance():
     df_['co_abundance'] = df_[cols_].mean(axis=1)
     return df_
 
+__all__.append('flatten')
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
@@ -334,7 +338,7 @@ __all__.append('read_summary_source')
 def read_summary_source(summary=False):
     df_ = pd.read_csv(workpath('23.10.02_dburke_kcl_OneDrive/summary_source.out.bz2'), na_values={'pdockq_fd': 'chain'}, nrows=None)\
         .rename({'#protdir': 'protdir'}, axis=1)
-    print(uf(len(df_)), 'raw records')
+    printlen(df_, 'raw records')
     def parse_(s_):
         l_id_ = s_.split('/')[1].split('_')
         if len(l_id_) == 2:
@@ -344,11 +348,11 @@ def read_summary_source(summary=False):
     df_.insert(0, 'interaction_id', [* df_['protdir'].map(parse_) ])
     df_.insert(2, 'folding_method', df_['protdir'].map(lambda s: s.split('/')[-1]))
     df_ = df_.query('interaction_id != "."').copy()
-    print(uf(len(df_)), 'after discarding non-dimers')
+    printlen(df_, 'after discarding non-dimers')
     df_[['uniprot_id_A', 'uniprot_id_B']] = df_['interaction_id'].str.split('_', expand=True)
     df_ = df_.query('(uniprot_id_A in @af2_uniprot_id()) & (uniprot_id_B in @af2_uniprot_id())').copy()
-    print(uf(len(df_)), 'after keeping uniprot_id-s in AF2 single fragment structures')
-    print(uf(len(set(df_['interaction_id']))), 'unique interaction_id-s')
+    printlen(df_, 'after keeping uniprot_id-s in AF2 single fragment structures')
+    printlen(set(df_['interaction_id']), 'unique interaction_id-s')
     if summary:
         df_ = df_[['interaction_id', 'source']].groupby('interaction_id').agg(
             source = ('source', lambda x: ':'.join(sorted(set(flatten([ x_i.split(':') for x_i in x ] ))))),
@@ -362,7 +366,7 @@ def read_summary_source(summary=False):
         return df_
 
 __all__.append('read_ppi_reselect')
-def read_ppi_reselect():
+def read_ppi_reselect(add_source=True):
     #fp_ = workpath('23.12.06_ppi_reselect/interface_best2_p10.csv') #8A
     #fp_ = workpath('23.12.06_ppi_reselect/interface_relaxed_best2_p10.csv') # 10A
     fp_ = workpath('23.12.06_ppi_reselect/interface_strict_best2_p10.csv') #5A
@@ -393,6 +397,10 @@ def read_ppi_reselect():
     printlen(df_.query('pdockq > .23'), 'with pdockq > .23')
     printlen(df_.query('pdockq > .5'), 'with pdockq > .5')
     df_['pdb'] = df_.apply(lambda r: workpath(f'23.12.06_ppi_reselect/af2-models-split/{r.pair.split("_")[0]}/{r.pair}.pdb'), axis=1)
+    if add_source:
+        df_source = read_summary_source(summary=True)[['summary_source']]
+        df_ = df_.merge(df_source, left_on='interaction_id', right_index=True)
+        printlen(df_, 'after adding evidence from summary_source.out.bz2')
     return df_.reset_index(drop=True)
 
 __all__.append('read_pockets')
@@ -711,3 +719,69 @@ def get_chain_seq(fname, target_chain):
                 for residue in chain:
                     seq += residue.get_resname()
     return Bio.SeqUtils.seq1(seq)
+
+__all__.append('read_biogrid')
+def read_biogrid(pairs_only=False, summary=False, counts=False):
+    with zipfile.ZipFile(workpath('23.11.21_ppi_evidence/biogrid/BIOGRID-ALL-4.4.227.tab3.zip'), 'r') as zf:
+        df_ = pd.read_csv(zf.open('BIOGRID-ALL-4.4.227.tab3.txt'), sep='\t',
+            dtype={
+                'Entrez Gene Interactor A': str,
+                'Entrez Gene Interactor B': str,
+            },
+            na_values={
+                'Score': '-',
+            },
+            #nrows=1000
+        )
+    printlen(df_, 'raw records')
+    df_ = df_.query('(`SWISS-PROT Accessions Interactor A` in @af2_uniprot_id()) & (`SWISS-PROT Accessions Interactor B` in @af2_uniprot_id())')
+    printlen(df_, 'mapped to AF2 human single-fragment structures')
+
+    df_ = df_.query('`Experimental System Type` == "physical"').copy()
+    printlen(df_, 'with `Experimental System Type` == "physical"')
+
+    if pairs_only:
+        pairs_ = set(interaction_id(r['SWISS-PROT Accessions Interactor A'], r['SWISS-PROT Accessions Interactor B']) for i, r in df_.iterrows())
+        printlen(pairs_, 'unique pairs')
+        return pairs_
+    elif summary:
+        df_['interactor_id'] = [ interaction_id(r['SWISS-PROT Accessions Interactor A'], r['SWISS-PROT Accessions Interactor B']) for i, r in df_.iterrows() ]
+        df_['isin_biogrid'] = True
+        df_ = df_[['interactor_id', 'isin_biogrid']].drop_duplicates()
+        printlen(df_, 'after filtering for unique interactions')
+        return df_.set_index('interactor_id')
+    elif counts:
+        df_['interaction_id'] = [ interaction_id(r['SWISS-PROT Accessions Interactor A'], r['SWISS-PROT Accessions Interactor B']) for i, r in df_.iterrows() ]
+        return df_.sort_values('interaction_id')[['interaction_id', 'Publication Source']].groupby('interaction_id').size().to_frame(name='biogrid_nrecords')
+    else:
+        return df_
+
+__all__.append('read_string')
+def read_string(combined_score_min=400, pairs_only=False, summary=False, scores=False):
+    df_alias_ = pd.read_csv(workpath('23.11.21_ppi_evidence/string/9606.protein.aliases.v12.0.txt.gz'), sep='\t')\
+        .query('source == "UniProt_AC" & alias in @af2_uniprot_id()')\
+        .rename({'#string_protein_id': 'string_protein_id', 'alias': 'uniprot_id'}, axis=1)[['string_protein_id', 'uniprot_id']]
+    
+    #fp_ = workpath('23.11.21_ppi_evidence/string/9606.protein.links.v12.0.txt.gz')
+    fp_ = workpath('23.11.21_ppi_evidence/string/9606.protein.physical.links.v12.0.txt.gz')
+    df_ = pd.read_csv(fp_, delim_whitespace=True)\
+        .merge(df_alias_, left_on='protein1', right_on='string_protein_id').rename({'uniprot_id': 'protein1_uniprot_id'}, axis=1).drop('string_protein_id', axis=1)\
+        .merge(df_alias_, left_on='protein2', right_on='string_protein_id').rename({'uniprot_id': 'protein2_uniprot_id'}, axis=1).drop('string_protein_id', axis=1)\
+        [['protein1_uniprot_id', 'protein2_uniprot_id', 'combined_score', 'protein1', 'protein2']]
+    printlen(df_, 'raw records from', fp_)
+    df_ = df_.query('combined_score >= @combined_score_min').copy()
+    printlen(df_, 'after filtering for min combined score')
+    df_['interaction_id'] = [ interaction_id(r['protein1_uniprot_id'], r['protein2_uniprot_id']) for i, r in df_.iterrows() ]
+    printlen(df_, 'after keeping uniprot_id-s in AF2 single fragment structures and filtering for combined_score_min')
+    if pairs_only:
+        printlen(df_['interactor_id'], 'unique pairs')
+        return set(df_['interactor_id'])
+    elif summary:
+        df_ = df_[['interaction_id', 'combined_score']].groupby('interaction_id').agg(combined_score=('combined_score', np.max))
+        df_['isin_string'] = True
+        printlen(df_, 'after aggregating directionality')
+        return df_[['isin_string']]
+    elif scores:
+        return df_[['interaction_id', 'combined_score']].groupby('interaction_id').agg(string_combined_score=('combined_score', np.max))
+    else:
+        return df_
