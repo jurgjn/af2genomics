@@ -1,6 +1,6 @@
 
 import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess, zipfile
-import numpy as np, scipy as sp, scipy.stats, matplotlib, matplotlib.pyplot as plt, seaborn as sns
+import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotlib, matplotlib.pyplot as plt, seaborn as sns
 import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
 import prody
 
@@ -510,13 +510,15 @@ class VariantEnrichment:
         self.struct_data['struct_resid'] = self.struct_data['struct_resid'].map(parse_resid)
 
         # Attach set of all residues
-        df_af2 = pd.read_csv('results/23.04_bindfunc/af2.tsv', sep='\t').query('n_frags == 1')[['uniprot_id', 'n_resid']]
+        #df_af2 = pd.read_csv('results/23.04_bindfunc/af2.tsv', sep='\t').query('n_frags == 1')[['uniprot_id', 'n_resid']]
+        df_af2 = read_structures()
         df_af2['resid'] = df_af2['n_resid'].map(lambda n_resid: set(range(1, n_resid + 1)))
         self.struct_data = self.struct_data.merge(df_af2[['uniprot_id', 'resid']], left_on='struct_uniprot_id', right_on='uniprot_id').drop(['uniprot_id'], axis=1)
 
         self.var_data = var_data[[var_uniprot_id, var_resid]].copy().rename({var_uniprot_id: 'var_uniprot_id', var_resid: 'var_resid'}, axis=1)
         #self.var_data['var_resid'] = self.var_data['var_resid'].map(parse_resid)
 
+        # merge has to start with the universe of all proteins!!
         self.merge_data = self.struct_data.merge(self.var_data, left_on='struct_uniprot_id', right_on='var_uniprot_id', how='left')
         def fillna_(x): return x if x == x else set()
         self.merge_data['var_uniprot_id'] = self.merge_data['var_uniprot_id'].map(fillna_)
@@ -528,21 +530,57 @@ class VariantEnrichment:
         self.merge_data['n_nostruct_novar'] = self.merge_data.apply(lambda r: len((r['resid'] - r['struct_resid']) - r['var_resid']), axis=1)
 
     def fisher_exact_(k, l, m, n):
+        print('new2')
         return sp.stats.fisher_exact([[k, l], [m, n]])
 
     def fisher_exact(self):
         self.merge_data_sums_ = self.merge_data[['n_struct_var', 'n_struct_novar', 'n_nostruct_var', 'n_nostruct_novar']].sum(axis=0)
         return VariantEnrichment.fisher_exact_(
             k=self.merge_data_sums_.n_struct_var,
-            l=self.merge_data_sums_.n_struct_novar,
-            m=self.merge_data_sums_.n_nostruct_var,
+            l=self.merge_data_sums_.n_nostruct_var,
+            m=self.merge_data_sums_.n_struct_novar,
             n=self.merge_data_sums_.n_nostruct_novar,
         )
 
     def fisher_exact_groupby(self):
         sums_ = self.merge_data.groupby('struct_bin')[['n_struct_var', 'n_struct_novar', 'n_nostruct_var', 'n_nostruct_novar']].sum()
-        sums_[['statistic', 'pvalue']] = sums_.apply(lambda r: VariantEnrichment.fisher_exact_(r.n_struct_var, r.n_struct_novar, r.n_nostruct_var, r.n_nostruct_novar), axis=1, result_type='expand')
+        sums_[['statistic', 'pvalue']] = sums_.apply(lambda r: VariantEnrichment.fisher_exact_(r.n_struct_var, r.n_nostruct_var, r.n_struct_novar, r.n_nostruct_novar), axis=1, result_type='expand')
         return sums_
+
+__all__.append('fisher_var_resid')
+def fisher_var_resid(resid, var, all):
+    def agg_(s):
+        return s.groupby(s.index).agg(lambda x: set.union(*x))
+
+    var_ = agg_(var).rename('var')
+    resid_ = agg_(resid).rename('resid')
+    all_ = agg_(all).rename('all')
+
+    left_ = pd.merge(all_, var_, left_index=True, right_index=True, how='left')
+    merge = pd.merge(left_, resid_, left_index=True, right_index=True, how='left')
+
+    def fillna_(x): return x if x == x else set()
+    merge['var'] = merge['var'].map(fillna_)
+    merge['resid'] = merge['resid'].map(fillna_)
+    merge['all'] = merge['all'].map(fillna_)
+
+    merge['n_resid_var'] = merge.apply(lambda r: len(r['resid'] & r['var']), axis=1)
+    merge['n_resid_novar'] = merge.apply(lambda r: len(r['resid'] - r['var']), axis=1)
+    merge['n_noresid_var'] = merge.apply(lambda r: len((r['all'] - r['resid']) & r['var']), axis=1)
+    merge['n_noresid_novar'] = merge.apply(lambda r: len((r['all'] - r['resid']) - r['var']), axis=1)
+
+    sums = merge[['n_resid_var', 'n_resid_novar', 'n_noresid_var', 'n_noresid_novar']].sum(axis=0)
+
+    def fisher_exact_(k, l, m, n):
+        return sp.stats.fisher_exact([[k, l], [m, n]])
+    
+    def odds_ratio_(k, l, m, n):
+        return scipy.stats.contingency.odds_ratio([[k, l], [m, n]], kind='conditional').statistic
+    
+    (statistic, pvalue) = fisher_exact_(sums.n_resid_var, sums.n_resid_novar, sums.n_noresid_var, sums.n_noresid_novar)
+    return pd.Series([statistic, pvalue], index=['odds_ratio', 'pvalue'])
+    #odds_ratio = odds_ratio_(sums.n_resid_var, sums.n_resid_novar, sums.n_noresid_var, sums.n_noresid_novar)
+    #return pd.Series([statistic, pvalue, odds_ratio], index=['sample_odds_ratio', 'pvalue', 'conditional_odds_ratio'])
 
 __all__.append('run_pymol')
 def run_pymol(cmds):
@@ -785,3 +823,32 @@ def read_string(combined_score_min=400, pairs_only=False, summary=False, scores=
         return df_[['interaction_id', 'combined_score']].groupby('interaction_id').agg(string_combined_score=('combined_score', np.max))
     else:
         return df_
+
+__all__.append('read_af2_human_interactions')
+def read_af2_human_interactions(drop_negatome=True, pdockq=.5):
+    fp_ = workpath('24.01.30_af2_human_interations/24.01.30_af2_human_interactions.tsv')
+    df_ = pd.read_csv(fp_, sep='\t')
+    printlen(df_, 'raw records from', fp_)
+    if drop_negatome:
+        df_ = df_.query('source != "negatome"')
+        printlen(df_, 'after removing negatome-only interactions')
+    if not (pdockq is None):
+        df_ = df_.query('pdockq > @pdockq')
+        printlen(df_, 'after filtering for pdockq')
+    return df_.reset_index(drop=True)
+
+__all__.append('read_evidence')
+def read_evidence():
+    df_evidence = pd.read_csv(workpath('23.11.01_human_protein_map/uniprot_evidence_23.05.1.tsv'), sep='\t')
+    #df_struct.query('resid_pdb != resid_pdb & resid_swiss != resid_swiss')
+    #df_struct.merge(df_evidence, left_on='uniprot_id', right_on='accession'#, how='left')
+    #m_ = df_evidence.duplicated(subset='accession', keep=False) 
+    #df_evidence[m_] #.groupby('accession')['accession'].value_counts()
+    return df_evidence.drop_duplicates(subset='accession').reset_index(drop=True)
+
+__all__.append('strip_fragment_id')
+def strip_fragment_id(af2_id):
+    # A0A385XJ53-F1	=> A0A385XJ53
+    fid_ = af2_id[::-1].split('-', maxsplit=1)[0][::-1]
+    assert fid_[0] == 'F'
+    return af2_id[:-(len(fid_) + 1)]
