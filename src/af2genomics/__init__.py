@@ -852,3 +852,76 @@ def strip_fragment_id(af2_id):
     fid_ = af2_id[::-1].split('-', maxsplit=1)[0][::-1]
     assert fid_[0] == 'F'
     return af2_id[:-(len(fid_) + 1)]
+
+__all__.append('read_clinvar')
+def read_clinvar():
+    df_clinvar = pd.read_csv(workpath('23.06.02_clinvar/clinvar_mapped.tsv'), sep='\t',
+        dtype={
+            'CHROM': str,
+            'RS': str,
+            'CLNDISDBINCL': str,
+            'CLNDNINCL': str,
+            'CLNSIGINCL': str,
+            'DBVARID': str,
+            'Chromosome': str,
+            'CLNSIG': str,
+            'CLNVC': str,
+            #'MC': str,
+            'Amino_acid_position': int,
+        },
+        #nrows=10,
+    )
+    printlen(df_clinvar, 'raw records')
+    df_clinvar = df_clinvar.query('CLNVC == "single_nucleotide_variant"').copy()
+    printlen(df_clinvar, 'after selecting for single nucleotide variants')
+    missense_ = df_clinvar.MC.str.endswith("missense_variant").fillna(False)
+    df_clinvar = df_clinvar[ missense_ ]
+    printlen(df_clinvar, 'after selecting for missense variants')
+    return df_clinvar
+
+__all__.append('rgyr')
+def rgyr(fp_):
+    # rgyr is corelated to protein size: https://doi.org/10.1134/S0026893308040195
+    # https://github.com/biopython/biopython/blob/master/Bio/PDB/Entity.py#L298-L329
+    # https://adkgromacstutorial.readthedocs.io/en/latest/analysis/rgyr.html
+    # https://github.com/sarisabban/Rg/blob/master/Rg.py
+    struct = Bio.PDB.PDBParser().get_structure('_', fp_)
+    com_coord = struct.center_of_mass()
+
+    df_ = pd.DataFrame.from_records([(atom.coord[0] - com_coord[0], atom.coord[1] - com_coord[1], atom.coord[2] - com_coord[2], atom.mass)\
+        for atom in struct.get_atoms()
+    ], columns=['dx', 'dy', 'dz', 'mass'])
+    df_['mass'] = df_['mass'] / df_['mass'].sum()
+    return math.sqrt(np.dot((df_['dx']**2 + df_['dy']**2 + df_['dz']**2), df_['mass']))
+
+__all__.append('read_autosite_cl')
+def read_autosite_cl(fp):
+    # PDBParser does not grok AutoSite output due to duplicate atom names; address by reading manually using read_fwf, and constructing Atom objects adhoc
+    #clust = Bio.PDB.PDBParser(QUIET=True).get_structure(fp_cl, fp_cl)
+    # https://www.cgl.ucsf.edu/chimera/docs/UsersGuide/tutorials/pdbintro.html
+    # https://gist.github.com/tbrittoborges/929ced78855945f3e296
+    colspecs = [(0, 6), (6, 11), (12, 16), (16, 17), (17, 20), (21, 22), (22, 26), (26, 27), (30, 38),
+                (38, 46), (46, 54), (54, 60), (60, 66), (76, 78), (78, 80)]
+    names = ['ATOM', 'Atom serial number', 'Atom name', 'Alternate location indicator',
+             'Residue name', 'Chain identifier', 'Residue sequence number', 'Insertion code',
+             'X', 'Y', 'Z', 'Occupancy', 'Temperature factor', 'Segment identifier', 'Element symbol']
+    df_ = pd.read_fwf(fp, names=names, colspecs=colspecs)
+    return df_
+
+__all__.append('resid_center_of_mass')
+def resid_center_of_mass(fp, resid):
+    CA_x, CA_y, CA_z = [], [], []
+    struct = Bio.PDB.PDBParser(QUIET=True).get_structure(fp, fp)
+    for chains in struct:
+        for chain in chains:
+            for residue in chain:
+                resname = residue.get_resname()
+                hetflag, resseq, icode = residue.get_id() # http://biopython.org/DIST/docs/api/Bio.PDB.Residue-pysrc.html#Residue.__repr__
+                if resseq in resid:
+                    for atom in residue:
+                        if atom.get_name() == 'CA':
+                            (atom_x, atom_y, atom_z) = atom.get_vector()
+                            CA_x.append(atom_x)
+                            CA_y.append(atom_y)
+                            CA_z.append(atom_z)
+    return np.mean(CA_x), np.mean(CA_y), np.mean(CA_z)
