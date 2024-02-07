@@ -871,4 +871,4 @@ def resid_center_of_mass(fp, resid):
                             CA_z.append(atom_z)
     return np.mean(CA_x), np.mean(CA_y), np.mean(CA_z)
 
-__all__.extend([name for (name, thing) in locals().items() if callable(thing)])
+__all__.extend([name for (name, thing) in locals().items() if callable(thing)]) #https://stackoverflow.com/questions/18451541/getting-a-list-of-locally-defined-functions-in-python
