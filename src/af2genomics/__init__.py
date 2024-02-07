@@ -1,5 +1,5 @@
 
-import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess, zipfile
+import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess, sys, zipfile
 import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotlib, matplotlib.pyplot as plt, seaborn as sns
 import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
 import prody
@@ -8,21 +8,17 @@ __all__ = ['RANDOM_SEED']
 # Fix `RANDOM_SEED` for (partial) reproducibility
 RANDOM_SEED = 4 # https://xkcd.com/221
 
-__all__.append('workpath')
 def workpath(path):
     #dir_ = os.path.dirname(__file__)
     dir_ = '/cluster/work/beltrao/jjaenes'
     return os.path.join(dir_, path)
 
-__all__.append('uf')
 def uf(x):
     return '{:,}'.format(x)
 
-__all__.append('ul')
 def ul(x):
     return uf(len(x))
 
-__all__.append('printsrc')
 def printsrc(*args, **kwargs):
     """
         https://stackoverflow.com/questions/3056048/filename-and-line-number-of-python-script
@@ -39,7 +35,6 @@ def printsrc(*args, **kwargs):
     #lineno = workflow.linemaps[filename][ frameinfo_.lineno ]
     print(f'{os.path.basename(filename)}:{lineno}', *args, **kwargs)
 
-__all__.append('printlen')
 def printlen(x, *args, **kwargs):
     # printlen(af2_uniprot_id(), 'human AF2 single-fragment structures')
     print(
@@ -116,18 +111,15 @@ def pfile(asset_id=None, compound_id=None, struct_id=None, screen_id=None, step=
     if v: print('pfile: ', filepath)
     return filepath
 
-__all__.append('phead')
 def phead(df, n=3):
     print(uf(len(df)), 'records')
     return df.head(n).transpose()
 
-__all__.append('pmerge')
 def pmerge(left, right, *args, **kwargs):
     left_merge_right = left.merge(right, *args, **kwargs)
     print('merge:', uf(len(left_merge_right)), 'left:', uf(len(left)), 'right:', uf(len(right)))
     return left_merge_right
 
-__all__.append('read_af2_pos')
 def read_af2_pos(add_residue_id=False, **kwargs):
     kwargs.setdefault('filepath_or_buffer', workpath('23.10.05_VEP_scores/23.10.18_af2_pos.tsv'))
     kwargs.setdefault('sep', '\t')
@@ -136,7 +128,6 @@ def read_af2_pos(add_residue_id=False, **kwargs):
         df_.insert(loc=1, column='residue_id', value=[ f'{r.uniprot_id}/{r.pos}' for i, r in df_.iterrows() ])
     return df_
 
-__all__.append('read_human_missense_scores')
 def read_human_missense_scores(add_residue_id=False, **kwargs):
     kwargs.setdefault('filepath_or_buffer', workpath('23.10.05_VEP_scores/23.10.13_human_missense_scores.tsv.gz'))
     kwargs.setdefault('dtype', {
@@ -153,7 +144,6 @@ def read_human_missense_scores(add_residue_id=False, **kwargs):
         df_.insert(loc=1, column='residue_id', value=df_['variant_id'].str[:-1])
     return df_
 
-__all__.append('read_interface_full')
 def read_interface_full():
     fp_ = workpath('23.09.07_dburke_af2interactions_mutfunc/interface_full.list')
     df_ppi = pd.read_csv(os.popen(f'grep -v "Error" {fp_}'), sep=' ')
@@ -163,7 +153,6 @@ def read_interface_full():
     #print(df_ppi.info())
     return df_ppi
 
-__all__.append('read_interface_full_strict')
 def read_interface_full_strict():
 	fp_ = workpath('23.09.07_dburke_af2interactions_mutfunc/interface_full_strict.list')
 	df_ppi = pd.read_csv(os.popen(f'grep -v "Error" {fp_}'), sep=' ')
@@ -172,7 +161,6 @@ def read_interface_full_strict():
 	df_ppi[['pairA', 'pairB']] = df_ppi['pair'].str.split('_', expand=True)
 	return df_ppi
 
-__all__.append('parse_resid')
 def parse_resid(s):
     """ Return various list-of-residues representations as set-of-ints, e.g.:
     parse_resid('')
@@ -191,13 +179,11 @@ def parse_resid(s):
     else:
         return set(map(int, x))
 
-__all__.append('fillna_set')
 def fillna_set(s):
     # Fill NA-s with an empty set
     # https://stackoverflow.com/questions/33199193/how-to-fill-dataframe-nan-values-with-empty-list-in-pandas
     return s.apply(lambda d: d if isinstance(d, set) else set())
 
-__all__.append('g_convert')
 def g_convert(query=["CASQ2", "CASQ1", "GSTO1", "DMD", "GSTM2"], target='UNIPROTSWISSPROT_ACC', organism='hsapiens', numeric_namespace='ENTREZGENE_ACC'):
     """
     Query for HGNC gene names using g:convert (https://biit.cs.ut.ee/gprofiler/convert)
@@ -206,13 +192,11 @@ def g_convert(query=["CASQ2", "CASQ1", "GSTO1", "DMD", "GSTM2"], target='UNIPROT
     df_ = pd.DataFrame(r.json()['result'])
     return df_
 
-__all__.append('pquery')
 def pquery(df_, *args, **kwargs):
     df_q_ = df_.query(*args, **kwargs)
     printsrc('pquery:', uf(len(df_q_)), 'of', uf(len(df_)), 'rows selected with', args[0])
     return df_q_
 
-__all__.append('calver')
 def calver(timestamp=None):
     """
     Examples: https://calver.org/#other-notable-projects
@@ -227,7 +211,6 @@ def calver(timestamp=None):
         timestamp = datetime.datetime.now()
     return timestamp.strftime('%y.%m.%d_%H%M%S')
 
-__all__.append('read_af2_pLDDT')
 def read_af2_pLDDT(fp_):
     resseq_pLDDT = collections.OrderedDict()
     parser = Bio.PDB.PDBParser(QUIET=True)
@@ -241,7 +224,6 @@ def read_af2_pLDDT(fp_):
                     resseq_pLDDT[resseq] = atom.bfactor
     return resseq_pLDDT
 
-__all__.append('read_swiss_resid')
 def read_swiss_resid():
     df_swiss = pd.read_csv(workpath('23.10.31_SWISS_human_2023-09-14/SWISS-MODEL_Repository/INDEX'), comment='#', sep='\t')
     df_swiss['pos'] = [* map(lambda from_, to_: set(range(from_, to_ + 1)), df_swiss['from'], df_swiss['to']) ]
@@ -251,77 +233,64 @@ def read_swiss_resid():
     df_resid = df_resid.reset_index().rename({'UniProtKB_ac': 'uniprot_id', 'PDB': 'resid_pdb', 'SWISSMODEL': 'resid_swiss'}, axis=1)
     return df_resid
 
-__all__.append('nan_to_set')
 def nan_to_set(x):
     return x if x == x else set()
 
-__all__.append('read_Cheng2023_s5')
 def read_Cheng2023_s5():
     # Supplementary Data S5: List of variants and AlphaMissense predictions for the ClinVar benchmark.
     df_ = pd.read_csv(workpath('23.10.05_VEP_scores/science.adg7492_data_s1_to_s9/science.adg7492_data_s5.csv'), sep=',', dtype={'label': int})
     df_['protein_variant'] = df_['protein_variant'].str.replace(':','/')
     return df_
 
-__all__.append('read_Cheng2023_s6')
 def read_Cheng2023_s6():
     # Supplementary Data S6: List of variants and AlphaMissense predictions for the Cancer hotspot mutations benchmark.
     df_ = pd.read_csv(workpath('23.10.05_VEP_scores/science.adg7492_data_s1_to_s9/science.adg7492_data_s6.csv'), sep=',')
     df_['protein_variant'] = df_['protein_variant'].str.replace(':','/')
     return df_
 
-__all__.append('read_Cheng2023_s7')
 def read_Cheng2023_s7():
     # Supplementary Data S7: List of variants and AlphaMissense predictions for the Deciphering Developmental Disorders benchmark.
     df_ = pd.read_csv(workpath('23.10.05_VEP_scores/science.adg7492_data_s1_to_s9/science.adg7492_data_s7.csv'), sep=',', dtype={'label': int})
     df_['protein_variant'] = df_['protein_variant'].str.replace(':','/')
     return df_
 
-__all__.append('read_Cheng2023_s8')
 def read_Cheng2023_s8():
     # Supplementary Data S8: List of variants and AlphaMissense predictions for the ProteinGym benchmark.
     df_ = pd.read_csv(workpath('23.10.05_VEP_scores/science.adg7492_data_s1_to_s9/Supplementary_Data_S8_proteingym.csv'), sep=',')#, dtype={'label': int})
     #df_['protein_variant'] = df_['protein_variant'].str.replace(':','/')
     return df_
 
-__all__.append('read_structures')
 def read_structures():
     return pd.read_csv(workpath('23.11.01_human_protein_map/structures_23.11.1.tsv'), sep='\t')
 
-__all__.append('read_missense')
 def read_missense():
     with sqlite3.connect(workpath('23.11.01_human_protein_map/missense_23.11.1.sqlite')) as db:
         df_ = pd.read_sql_query(sql='SELECT * FROM missense', con=db)
     return df_
 
-__all__.append('query_missense')
 def query_missense(variants):
     #https://stackoverflow.com/questions/28735213/pandas-read-sql-with-a-list-of-values-for-where-condition
     with sqlite3.connect(workpath('23.11.01_human_protein_map/missense_23.11.1.sqlite')) as db:
         df_ = pd.read_sql_query(sql='SELECT * FROM missense WHERE variant_id in ' + str(tuple(variants)), con=db)
     return df_
 
-__all__.append('query_missense_uniprot_id')
 def query_missense_uniprot_id(uniprot_id):
     with sqlite3.connect(workpath('23.11.01_human_protein_map/missense_23.11.1.sqlite')) as db:
         df_ = pd.read_sql_query(sql=f'SELECT * FROM missense WHERE variant_id GLOB "{uniprot_id}*"', con=db)
     return df_
 
-__all__.append('jaccard')
 def jaccard(a, b):
     return len(a & b) / len(a | b)
 
-__all__.append('interaction_id')
 def interaction_id(uniprot_id_1, uniprot_id_2):
     # sorted pair of uniprot_id-s to compare interacting pairs from different sources
     return '_'.join(sorted([uniprot_id_1, uniprot_id_2]))
 
-__all__.append('af2_uniprot_id')
 @functools.cache
 def af2_uniprot_id():
     # AF2 human single-fragment structures (set used for pocket detection, interface modelling, etc)
     return set(read_structures()['uniprot_id'])
 
-__all__.append('read_tissue_coabundance')
 @functools.cache
 def read_tissue_coabundance():
     fp_ = workpath('24.01.17_coabundances/DLT240108_tissue_coabundance_for_interfaces_af2_human_24.01.08.csv')
@@ -330,11 +299,9 @@ def read_tissue_coabundance():
     df_['co_abundance'] = df_[cols_].mean(axis=1)
     return df_
 
-__all__.append('flatten')
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
-__all__.append('read_summary_source')
 def read_summary_source(summary=False):
     df_ = pd.read_csv(workpath('23.10.02_dburke_kcl_OneDrive/summary_source.out.bz2'), na_values={'pdockq_fd': 'chain'}, nrows=None)\
         .rename({'#protdir': 'protdir'}, axis=1)
@@ -365,7 +332,6 @@ def read_summary_source(summary=False):
     else:
         return df_
 
-__all__.append('read_ppi_reselect')
 def read_ppi_reselect(add_source=True):
     #fp_ = workpath('23.12.06_ppi_reselect/interface_best2_p10.csv') #8A
     #fp_ = workpath('23.12.06_ppi_reselect/interface_relaxed_best2_p10.csv') # 10A
@@ -403,7 +369,6 @@ def read_ppi_reselect(add_source=True):
         printlen(df_, 'after adding evidence from summary_source.out.bz2')
     return df_.reset_index(drop=True)
 
-__all__.append('read_pockets')
 @functools.cache
 def read_pockets():
     fp_ = workpath('23.10.16_af2_human_pockets/23.10.16_af2_human_pocket_summary.tsv.gz')
@@ -411,7 +376,6 @@ def read_pockets():
     df_['pocket_resid'] = df_['pocket_resid'].map(parse_resid)
     return df_
 
-__all__.append('pLDDT_palette')
 # pLDDT visualisation to match AFDB, e.g. https://alphafold.ebi.ac.uk/entry/P00533
 pLDDT_palette = {
     'Very low (pLDDT < 50)': '#ff7d45ff',
@@ -422,7 +386,6 @@ pLDDT_palette = {
 __all__.append('pLDDT_bins')
 pLDDT_bins = [0, 50, 70, 90, 100]
 
-__all__.append('to_pymol_init')
 def to_pymol_init():
     print("""delete all
 bg_color white
@@ -437,12 +400,10 @@ set_color tab_gray, [127,127,127]
 set_color tab_olive, [188,189,34]
 set_color tab_cyan, [23,190,207]""")
 
-__all__.append('to_pymol_struct')
 def to_pymol_struct(struct_id, base='~/euler-home/project/22.12_pocketomes/results/23.04_bindfunc'):
     print('load', pfile(struct_id=struct_id, step='af2', suffix='.pdb', base=base))
     print('color grey50,', struct_id)
 
-__all__.append('to_pymol_pocket')
 def to_pymol_pocket(struct_id, pocket_id, transparency=0.5, color='tab_blue'):
     pocket_cl_file = read_pockets().query('struct_id == @struct_id & pocket_id == @pocket_id').squeeze().pocket_cl_file
     pocket_name = os.path.splitext(os.path.basename(pocket_cl_file))[0]
@@ -471,7 +432,6 @@ def rmsd_(r1_, r2_):
     sup.run()
     print(sup.get_init_rms(), sup.get_rms())
 """
-__all__.append('bait_rmsd')
 def bait_rmsd(fpA, fpB):
     # RMSD of (shared) chain
     #fpA = bait_.df_bait_id.iloc[0].pdb
@@ -485,13 +445,11 @@ def bait_rmsd(fpA, fpB):
     #print(rmsd_pre_, rmsd_post_)
     return rmsd_post_
 
-__all__.append('read_chain_len')
 def read_chain_len(fp_, chain_):
     # number of residues in a chain
     structure_ = Bio.PDB.PDBParser(QUIET=True).get_structure(fp_, fp_)
     return len([residue['CA'].coord for residue in structure_[0][chain_]]) #https://biopython.org/DIST/docs/tutorial/Tutorial.html#sec203
 
-__all__.append('parse_varstr')
 def parse_varstr(s):
     # df_var[['uniprot_id', 'aa_pos', 'aa_ref', 'aa_alt']] = df_var.apply(lambda r: parse_varstr(r['protein_variant']), axis=1, result_type='expand')
     uniprot_id, variant_id = s.split('/')
@@ -547,7 +505,6 @@ class VariantEnrichment:
         sums_[['statistic', 'pvalue']] = sums_.apply(lambda r: VariantEnrichment.fisher_exact_(r.n_struct_var, r.n_nostruct_var, r.n_struct_novar, r.n_nostruct_novar), axis=1, result_type='expand')
         return sums_
 
-__all__.append('fisher_var_resid')
 def fisher_var_resid(resid, var, all):
     def agg_(s):
         return s.groupby(s.index).agg(lambda x: set.union(*x))
@@ -582,7 +539,6 @@ def fisher_var_resid(resid, var, all):
     #odds_ratio = odds_ratio_(sums.n_resid_var, sums.n_resid_novar, sums.n_noresid_var, sums.n_noresid_novar)
     #return pd.Series([statistic, pvalue, odds_ratio], index=['sample_odds_ratio', 'pvalue', 'conditional_odds_ratio'])
 
-__all__.append('run_pymol')
 def run_pymol(cmds):
     s_ = subprocess.run('module load gcc/6.3.0 pymol; pymol -cpQ', input='\n'.join(cmds), text=True, shell=True, capture_output=True)
     return s_
@@ -721,7 +677,6 @@ def calc_plddt_matrix(chain_one, chain_two):
             answer[row, col] = min(bfactor1, bfactor2)
     return answer
 
-__all__.append('calc_interface_residues')
 def calc_interface_residues(fname, dist_threshold=5.0, plddt_threshold=70):
     """
     res_A, res_B, dist_, plddt_ = calc_interface_residues('/cluster/work/beltrao/jjaenes/23.12.06_ppi_reselect/af2-models-split/P62306/P62306_Q9Y333.pdb', plddt_threshold=70)
@@ -746,7 +701,6 @@ def calc_interface_residues(fname, dist_threshold=5.0, plddt_threshold=70):
     #print('B:', res_B)
     return res_A, res_B#, dist_matrix, plddt_matrix
 
-__all__.append('get_chain_seq')
 def get_chain_seq(fname, target_chain):
     seq = ''
     parser = Bio.PDB.PDBParser(QUIET=True)
@@ -758,7 +712,6 @@ def get_chain_seq(fname, target_chain):
                     seq += residue.get_resname()
     return Bio.SeqUtils.seq1(seq)
 
-__all__.append('read_biogrid')
 def read_biogrid(pairs_only=False, summary=False, counts=False):
     with zipfile.ZipFile(workpath('23.11.21_ppi_evidence/biogrid/BIOGRID-ALL-4.4.227.tab3.zip'), 'r') as zf:
         df_ = pd.read_csv(zf.open('BIOGRID-ALL-4.4.227.tab3.txt'), sep='\t',
@@ -794,7 +747,6 @@ def read_biogrid(pairs_only=False, summary=False, counts=False):
     else:
         return df_
 
-__all__.append('read_string')
 def read_string(combined_score_min=400, pairs_only=False, summary=False, scores=False):
     df_alias_ = pd.read_csv(workpath('23.11.21_ppi_evidence/string/9606.protein.aliases.v12.0.txt.gz'), sep='\t')\
         .query('source == "UniProt_AC" & alias in @af2_uniprot_id()')\
@@ -824,7 +776,6 @@ def read_string(combined_score_min=400, pairs_only=False, summary=False, scores=
     else:
         return df_
 
-__all__.append('read_af2_human_interactions')
 def read_af2_human_interactions(drop_negatome=True, pdockq=.5):
     fp_ = workpath('24.01.30_af2_human_interations/24.01.30_af2_human_interactions.tsv')
     df_ = pd.read_csv(fp_, sep='\t')
@@ -837,7 +788,6 @@ def read_af2_human_interactions(drop_negatome=True, pdockq=.5):
         printlen(df_, 'after filtering for pdockq')
     return df_.reset_index(drop=True)
 
-__all__.append('read_evidence')
 def read_evidence():
     df_evidence = pd.read_csv(workpath('23.11.01_human_protein_map/uniprot_evidence_23.05.1.tsv'), sep='\t')
     #df_struct.query('resid_pdb != resid_pdb & resid_swiss != resid_swiss')
@@ -846,14 +796,12 @@ def read_evidence():
     #df_evidence[m_] #.groupby('accession')['accession'].value_counts()
     return df_evidence.drop_duplicates(subset='accession').reset_index(drop=True)
 
-__all__.append('strip_fragment_id')
 def strip_fragment_id(af2_id):
     # A0A385XJ53-F1	=> A0A385XJ53
     fid_ = af2_id[::-1].split('-', maxsplit=1)[0][::-1]
     assert fid_[0] == 'F'
     return af2_id[:-(len(fid_) + 1)]
 
-__all__.append('read_clinvar')
 def read_clinvar():
     df_clinvar = pd.read_csv(workpath('23.06.02_clinvar/clinvar_mapped.tsv'), sep='\t',
         dtype={
@@ -879,7 +827,6 @@ def read_clinvar():
     printlen(df_clinvar, 'after selecting for missense variants')
     return df_clinvar
 
-__all__.append('rgyr')
 def rgyr(fp_):
     # rgyr is corelated to protein size: https://doi.org/10.1134/S0026893308040195
     # https://github.com/biopython/biopython/blob/master/Bio/PDB/Entity.py#L298-L329
@@ -894,7 +841,6 @@ def rgyr(fp_):
     df_['mass'] = df_['mass'] / df_['mass'].sum()
     return math.sqrt(np.dot((df_['dx']**2 + df_['dy']**2 + df_['dz']**2), df_['mass']))
 
-__all__.append('read_autosite_cl')
 def read_autosite_cl(fp):
     # PDBParser does not grok AutoSite output due to duplicate atom names; address by reading manually using read_fwf, and constructing Atom objects adhoc
     #clust = Bio.PDB.PDBParser(QUIET=True).get_structure(fp_cl, fp_cl)
@@ -908,7 +854,6 @@ def read_autosite_cl(fp):
     df_ = pd.read_fwf(fp, names=names, colspecs=colspecs)
     return df_
 
-__all__.append('resid_center_of_mass')
 def resid_center_of_mass(fp, resid):
     CA_x, CA_y, CA_z = [], [], []
     struct = Bio.PDB.PDBParser(QUIET=True).get_structure(fp, fp)
@@ -925,3 +870,5 @@ def resid_center_of_mass(fp, resid):
                             CA_y.append(atom_y)
                             CA_z.append(atom_z)
     return np.mean(CA_x), np.mean(CA_y), np.mean(CA_z)
+
+__all__.extend([name for (name, thing) in locals().items() if callable(thing)])
