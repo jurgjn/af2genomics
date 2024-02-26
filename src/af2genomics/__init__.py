@@ -305,7 +305,7 @@ def flatten(l):
 def read_summary_source(summary=False):
     df_ = pd.read_csv(workpath('23.10.02_dburke_kcl_OneDrive/summary_source.out.bz2'), na_values={'pdockq_fd': 'chain'}, nrows=None)\
         .rename({'#protdir': 'protdir'}, axis=1)
-    printlen(df_, 'raw records')
+    printlen(df_, 'raw models')
     def parse_(s_):
         l_id_ = s_.split('/')[1].split('_')
         if len(l_id_) == 2:
@@ -315,11 +315,10 @@ def read_summary_source(summary=False):
     df_.insert(0, 'interaction_id', [* df_['protdir'].map(parse_) ])
     df_.insert(2, 'folding_method', df_['protdir'].map(lambda s: s.split('/')[-1]))
     df_ = df_.query('interaction_id != "."').copy()
-    printlen(df_, 'after discarding non-dimers')
     df_[['uniprot_id_A', 'uniprot_id_B']] = df_['interaction_id'].str.split('_', expand=True)
+    print(uf(len(df_)), '\t', uf(len(set(df_['interaction_id']))), 'models (interactions) after discarding non-dimers')
     df_ = df_.query('(uniprot_id_A in @af2_uniprot_id()) & (uniprot_id_B in @af2_uniprot_id())').copy()
-    printlen(df_, 'after keeping uniprot_id-s in AF2 single fragment structures')
-    printlen(set(df_['interaction_id']), 'unique interaction_id-s')
+    print(uf(len(df_)), '\t', uf(len(set(df_['interaction_id']))), 'models (interactions) after keeping human AF2 single-fragment')
     if summary:
         df_ = df_[['interaction_id', 'source']].groupby('interaction_id').agg(
             source = ('source', lambda x: ':'.join(sorted(set(flatten([ x_i.split(':') for x_i in x ] ))))),
@@ -458,6 +457,14 @@ def parse_varstr(s):
     aa_alt = variant_id[-1]
     #print(uniprot_id, aa_pos, aa_ref, aa_alt)
     return uniprot_id, aa_pos, aa_ref, aa_alt
+
+def parse_variant_id(variant_id):
+    # df_var[['uniprot_id', 'aa_pos', 'aa_ref', 'aa_alt']] = df_var.apply(lambda r: parse_varstr(r['protein_variant']), axis=1, result_type='expand')
+    aa_pos = variant_id[1:-1]
+    aa_ref = variant_id[0]
+    aa_alt = variant_id[-1]
+    #print(uniprot_id, aa_pos, aa_ref, aa_alt)
+    return aa_pos, aa_ref, aa_alt
 
 __all__.append('VariantEnrichment')
 class VariantEnrichment:
@@ -870,5 +877,33 @@ def resid_center_of_mass(fp, resid):
                             CA_y.append(atom_y)
                             CA_z.append(atom_z)
     return np.mean(CA_x), np.mean(CA_y), np.mean(CA_z)
+
+def read_protvarmap_pharmgkb():
+    fp_protvarmap = workpath('23.07.03_pharmgkb/24.02.08_pharmgkb_protvar/a2178b7a-a8cd-489f-9264-bc0529287fd7.csv')
+    df_protvarmap = pd.read_csv(fp_protvarmap, sep=',')
+    printlen(df_protvarmap, 'unique positions in pharmgkb')
+    print(df_protvarmap['Consequences'].value_counts())
+    df_protvarmap = pd.read_csv(fp_protvarmap, sep=',').query('Consequences == "missense"')
+    printlen(df_protvarmap, 'mapped to a missense variant by ProtVar')
+    #df_protvarmap.columns
+    #cols_ = ['User_input', 'Chromosome', 'Coordinate', 'ID', 'Reference_allele',
+    #    'Alternative_allele', 'Notes', 'Gene', 'Codon_change', 'Strand',
+    #    'CADD_phred_like_score', 'Canonical_isoform_transcripts',
+    #    'Uniprot_canonical_isoform_(non_canonical)',
+    #    'Alternative_isoform_mappings', 'Protein_name', 'Amino_acid_position',
+    #    'Amino_acid_change', 'Consequences',
+    #]
+    mapper_ = {
+        'Uniprot_canonical_isoform_(non_canonical)': 'uniprot_id',
+        'Amino_acid_position': 'resid_pos',
+        'Amino_acid_change': 'resid_change',
+        'User_input': 'Variant/Haplotypes',
+    }
+    df_protvarmap = df_protvarmap[mapper_.keys()].rename(mapper_, axis=1).astype({'resid_pos': int}).reset_index(drop=True)
+    printlen(df_protvarmap, 'after cleaning up columns')
+
+    df_protvarmap = df_protvarmap.groupby(['uniprot_id', 'resid_pos', 'Variant/Haplotypes']).agg({'resid_change': lambda x: ';'.join(x)}).reset_index()
+    printlen(df_protvarmap, 'after aggregating codon changes')
+    return df_protvarmap
 
 __all__.extend([name for (name, thing) in locals().items() if callable(thing)]) #https://stackoverflow.com/questions/18451541/getting-a-list-of-locally-defined-functions-in-python
