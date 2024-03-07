@@ -369,10 +369,12 @@ def read_ppi_reselect(add_source=True):
     return df_.reset_index(drop=True)
 
 @functools.cache
-def read_pockets():
+def read_pockets(insert_uniprot_id=True):
     fp_ = workpath('23.10.16_af2_human_pockets/23.10.16_af2_human_pocket_summary.tsv.gz')
     df_ = pd.read_csv(fp_, sep='\t')
     df_['pocket_resid'] = df_['pocket_resid'].map(parse_resid)
+    if insert_uniprot_id:
+        df_.insert(loc=0, column='uniprot_id', value=df_['struct_id'].map(strip_fragment_id))
     return df_
 
 # pLDDT visualisation to match AFDB, e.g. https://alphafold.ebi.ac.uk/entry/P00533
