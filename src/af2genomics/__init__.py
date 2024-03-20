@@ -8,6 +8,11 @@ __all__ = ['RANDOM_SEED']
 # Fix `RANDOM_SEED` for (partial) reproducibility
 RANDOM_SEED = 4 # https://xkcd.com/221
 
+def projectpath(path):
+    #dir_ = os.path.dirname(__file__)
+    dir_ = '/cluster/project/beltrao/jjaenes'
+    return os.path.join(dir_, path)
+
 def workpath(path):
     #dir_ = os.path.dirname(__file__)
     dir_ = '/cluster/work/beltrao/jjaenes'
@@ -36,11 +41,11 @@ def printsrc(*args, **kwargs):
     print(f'{os.path.basename(filename)}:{lineno}', *args, **kwargs)
 
 def printlen(x, *args, **kwargs):
-    # printlen(af2_uniprot_id(), 'human AF2 single-fragment structures')
-    print(
-        f'{inspect.stack()[1][3]}:', #https://stackoverflow.com/questions/5067604/determine-function-name-from-within-that-function-without-using-traceback
-        uf(len(x)),
-    *args, **kwargs)
+    name_ = inspect.stack()[1][3] #https://stackoverflow.com/questions/5067604/determine-function-name-from-within-that-function-without-using-traceback
+    if name_ != '<module>':
+        print(f'{name_}:', uf(len(x)), *args, **kwargs)
+    else:
+        print(uf(len(x)), *args, **kwargs)
 
 def penc(s):
     """Encode exotic characters within identifiers using percent-encoding, e.g.:
@@ -377,15 +382,17 @@ def read_pockets(insert_uniprot_id=True):
         df_.insert(loc=0, column='uniprot_id', value=df_['struct_id'].map(strip_fragment_id))
     return df_
 
-# pLDDT visualisation to match AFDB, e.g. https://alphafold.ebi.ac.uk/entry/P00533
-pLDDT_palette = {
-    'Very low (pLDDT < 50)': '#ff7d45ff',
-    'Low (70 > pLDDT > 50)': '#ffdb13ff',
-    'High (90 > pLDDT > 70)': '#64cbf3ff',
-    'Very high (pLDDT > 90)': '#0053d6ff',
-}
 __all__.append('pLDDT_bins')
 pLDDT_bins = [0, 50, 70, 90, 100]
+
+__all__.append('pLDDT_palette')
+# pLDDT visualisation to match AFDB, e.g. https://alphafold.ebi.ac.uk/entry/P00533
+pLDDT_palette = {
+    'Very low (pLDDT ≤ 50)': '#ff7d45ff',
+    'Low (70 ≥ pLDDT > 50)': '#ffdb13ff',
+    'High (90 ≥ pLDDT > 70)': '#64cbf3ff',
+    'Very high (pLDDT > 90)': '#0053d6ff',
+}
 
 def to_pymol_init():
     print("""delete all
@@ -907,5 +914,9 @@ def read_protvarmap_pharmgkb():
     df_protvarmap = df_protvarmap.groupby(['uniprot_id', 'resid_pos', 'Variant/Haplotypes']).agg({'resid_change': lambda x: ';'.join(x)}).reset_index()
     printlen(df_protvarmap, 'after aggregating codon changes')
     return df_protvarmap
+
+def get_uniprot_sequence(accession):
+    url = f'https://rest.uniprot.org/uniprotkb/search?query={accession}&fields=sequence'
+    return requests.get(url).json()['results'][0]['sequence']['value']
 
 __all__.extend([name for (name, thing) in locals().items() if callable(thing)]) #https://stackoverflow.com/questions/18451541/getting-a-list-of-locally-defined-functions-in-python
