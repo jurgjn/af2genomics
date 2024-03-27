@@ -1,8 +1,16 @@
 
 import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess, sys, zipfile
 import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotlib, matplotlib.pyplot as plt, seaborn as sns
-import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
-import prody
+
+try:
+    import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
+except ImportError:
+    print('biopython not found; if needed, install with: conda install conda-forge::biopython')
+
+try:
+    import prody
+except ImportError:
+    print('prody not found; if needed, install with: conda install conda-forge::prody')
 
 __all__ = ['RANDOM_SEED']
 # Fix `RANDOM_SEED` for (partial) reproducibility
@@ -277,12 +285,93 @@ def query_missense(variants):
     #https://stackoverflow.com/questions/28735213/pandas-read-sql-with-a-list-of-values-for-where-condition
     with sqlite3.connect(workpath('23.11.01_human_protein_map/missense_23.11.1.sqlite')) as db:
         df_ = pd.read_sql_query(sql='SELECT * FROM missense WHERE variant_id in ' + str(tuple(variants)), con=db)
-    return df_
+    return df_.replace({
+        'pred_ddg': -99,
+        'pocketscore': -99,
+        'pocketrank': -99,
+        'interface': -99,
+        'interface_strict': -99,
+        'freq': -99,
+    }, np.nan)
 
 def query_missense_uniprot_id(uniprot_id):
     with sqlite3.connect(workpath('23.11.01_human_protein_map/missense_23.11.1.sqlite')) as db:
         df_ = pd.read_sql_query(sql=f'SELECT * FROM missense WHERE variant_id GLOB "{uniprot_id}*"', con=db)
     return df_
+
+def read_pockets_resid():
+    # Pockets, one per 
+    #Q96EK7-F1      157
+    cols_ = ['uniprot_id', 'struct_id', 'pocket_id', 'pocket_resid', 'pocket_score_combined_scaled']
+    q_ = 'pocket_score_combined_scaled >= 900'
+    return read_pockets().query(q_).explode('pocket_resid')[cols_].sort_values('pocket_score_combined_scaled', ascending=False).groupby(['uniprot_id', 'pocket_resid'])\
+        .head(1)#.query('struct_id == "Q96EK7-F1" & pocket_resid == 157')
+
+@functools.cache
+def read_ppi_resid(pdockq=.5):
+    df_models = read_af2_human_interactions(pdockq=pdockq)
+    cols_ = ['uniprot_id', 'ifresid']
+    q_ne_ = 'protein1 != protein2'
+    q_eq_ = 'protein1 == protein2'
+    df_interfaces = pd.concat([
+        df_models.query(q_ne_).rename({'protein1': 'uniprot_id', 'residues1': 'ifresid',}, axis=1)[cols_],
+        df_models.query(q_eq_).rename({'protein1': 'uniprot_id', 'residues1': 'ifresid',}, axis=1)[cols_],
+        df_models.query(q_ne_).rename({'protein2': 'uniprot_id', 'residues2': 'ifresid',}, axis=1)[cols_],
+    ], axis=0)
+    df_interfaces['ifresid'] = df_interfaces['ifresid'].map(parse_resid)
+    df_ifresid = df_interfaces.explode('ifresid').drop_duplicates(keep='first')
+    return df_ifresid
+
+def merge_missense(frame, variant_col, *args, **kwargs):
+    cols_out = frame.columns.tolist()
+    printlen(frame, 'raw records')
+    frame[['_uniprot_id', '_aa_pos', '_aa_ref', '_aa_alt']] = frame.apply(lambda r: parse_varstr(r[variant_col]), axis=1, result_type='expand')
+
+    variant_frame = query_missense(frame[variant_col]).set_index('variant_id')[['am_pathogenicity', 'am_class', 'pred_ddg']]
+    frame = frame.merge(variant_frame, left_on=variant_col, right_index=True, *args, **kwargs)
+    printlen(frame, 'records matched to predictions')
+
+    frame['am_label'] = frame['am_class'] == 'pathogenic'
+    frame['pred_ddg_label'] = frame['pred_ddg'].map(lambda pred_ddg: pred_ddg > 2)
+    printlen(frame.query('pred_ddg_label'), 'annotated as destabilizing')
+    cols_out += ['am_pathogenicity', 'am_class', 'am_label', 'pred_ddg', 'pred_ddg_label']
+
+    frame = frame.merge(read_pockets_resid(), left_on=['_uniprot_id', '_aa_pos'], right_on=['uniprot_id', 'pocket_resid'], how='left')
+    frame['pocket_label'] = frame['pocket_score_combined_scaled'].map(lambda pocket_score_combined_scaled: pocket_score_combined_scaled == pocket_score_combined_scaled)
+    printlen(frame.query('pocket_label'), 'annotated with pockets')
+    cols_out += ['pocket_label']
+
+    frame = frame.merge(read_ppi_resid(), left_on=['_uniprot_id', '_aa_pos'], right_on=['uniprot_id', 'ifresid'], suffixes=('', '_ppi'), how='left')
+    frame['interface_label'] = frame['ifresid'].map(lambda ifresid: ifresid == ifresid)
+    printlen(frame.query('interface_label'), 'annotated with interfaces')
+    cols_out += ['interface_label']
+
+    return frame[cols_out]
+
+def pvalue_label(pvalue):
+    if pvalue <= .0001:
+        return '****'
+    elif pvalue <= .001:
+        return '***'
+    elif pvalue <= .01:
+        return '**'
+    elif pvalue <= .05:
+        return '*'
+    else:
+        return 'ns'
+
+def plot_merge_missense(frame, col):
+    stats = pd.DataFrame.from_records([
+        sp.stats.fisher_exact(pd.crosstab(frame[col], frame['am_label']).values),
+        sp.stats.fisher_exact(pd.crosstab(frame[col], frame['pred_ddg_label']).values),
+        sp.stats.fisher_exact(pd.crosstab(frame[col], frame['pocket_label']).values),
+        sp.stats.fisher_exact(pd.crosstab(frame[col], frame['interface_label']).values),
+    ], index=['Pathogenicity', 'Stability', 'Pockets', 'Interfaces'], columns=['odds_ratio', 'pvalue'])
+    stats.index.name = 'predictor'
+    stats['pvalue_label'] = stats['pvalue'].map(pvalue_label)
+    ax = sns.barplot(data=stats.reset_index(), y='predictor', x='odds_ratio', color='tab:blue')
+    ax.bar_label(ax.containers[0], labels=stats['pvalue_label'])
+    return stats
 
 def jaccard(a, b):
     return len(a & b) / len(a | b)
@@ -461,7 +550,7 @@ def read_chain_len(fp_, chain_):
 def parse_varstr(s):
     # df_var[['uniprot_id', 'aa_pos', 'aa_ref', 'aa_alt']] = df_var.apply(lambda r: parse_varstr(r['protein_variant']), axis=1, result_type='expand')
     uniprot_id, variant_id = s.split('/')
-    aa_pos = variant_id[1:-1]
+    aa_pos = int(variant_id[1:-1])
     aa_ref = variant_id[0]
     aa_alt = variant_id[-1]
     #print(uniprot_id, aa_pos, aa_ref, aa_alt)
@@ -469,7 +558,7 @@ def parse_varstr(s):
 
 def parse_variant_id(variant_id):
     # df_var[['uniprot_id', 'aa_pos', 'aa_ref', 'aa_alt']] = df_var.apply(lambda r: parse_varstr(r['protein_variant']), axis=1, result_type='expand')
-    aa_pos = variant_id[1:-1]
+    aa_pos = int(variant_id[1:-1])
     aa_ref = variant_id[0]
     aa_alt = variant_id[-1]
     #print(uniprot_id, aa_pos, aa_ref, aa_alt)
