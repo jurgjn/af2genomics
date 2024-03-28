@@ -9,7 +9,9 @@ $ pip install -e .
 
 Environment set up if needed (python>3.9 needed for functools.cache):
 ```
-conda create -n "af2genomics" python>3.9
+mamba create -n af2genomics "python>3.9" numpy scipy matplotlib seaborn requests
+mamba activate af2genomics
 pip install ipykernel
 python -m ipykernel install --user --name=af2genomics
 ```
+    
