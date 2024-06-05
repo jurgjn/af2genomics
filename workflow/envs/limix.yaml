@@ -1,0 +1,12 @@
+name: limix-env
+channels:
+# Channel ordering as recommended by bioconda docs:
+#     https://bioconda.github.io/user/install.html#set-up-channels
+- conda-forge
+- defaults
+dependencies:
+- anaconda
+- pandas<=1.0.5 # https://github.com/limix/limix/issues/103
+- pytables # HDF5
+- conda-forge::limix
+
