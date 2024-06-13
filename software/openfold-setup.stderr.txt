@@ -1,0 +1,42 @@
+Many modules are hidden in this stack. Use "module --show_hidden spider SOFTWARE" if you are not able to find the required software
+Cloning into 'openfold'...
+Switched to a new branch 'pl_upgrades'
+Cloning into 'cutlass'...
+Updating files:   9% (568/5774)Updating files:  10% (578/5774)Updating files:  11% (636/5774)Updating files:  12% (693/5774)Updating files:  13% (751/5774)Updating files:  14% (809/5774)Updating files:  15% (867/5774)Updating files:  16% (924/5774)Updating files:  17% (982/5774)Updating files:  18% (1040/5774)Updating files:  19% (1098/5774)Updating files:  19% (1145/5774)Updating files:  20% (1155/5774)Updating files:  21% (1213/5774)Updating files:  22% (1271/5774)Updating files:  23% (1329/5774)Updating files:  24% (1386/5774)Updating files:  25% (1444/5774)Updating files:  26% (1502/5774)Updating files:  27% (1559/5774)Updating files:  28% (1617/5774)Updating files:  29% (1675/5774)Updating files:  30% (1733/5774)Updating files:  31% (1790/5774)Updating files:  31% (1832/5774)Updating files:  32% (1848/5774)Updating files:  33% (1906/5774)Updating files:  34% (1964/5774)Updating files:  35% (2021/5774)Updating files:  36% (2079/5774)Updating files:  37% (2137/5774)Updating files:  38% (2195/5774)Updating files:  39% (2252/5774)Updating files:  40% (2310/5774)Updating files:  40% (2326/5774)Updating files:  41% (2368/5774)Updating files:  42% (2426/5774)Updating files:  43% (2483/5774)Updating files:  44% (2541/5774)Updating files:  45% (2599/5774)Updating files:  46% (2657/5774)Updating files:  46% (2697/5774)Updating files:  47% (2714/5774)Updating files:  48% (2772/5774)Updating files:  49% (2830/5774)Updating files:  50% (2887/5774)Updating files:  51% (2945/5774)Updating files:  52% (3003/5774)Updating files:  53% (3061/5774)Updating files:  54% (3118/5774)Updating files:  54% (3168/5774)Updating files:  55% (3176/5774)Updating files:  56% (3234/5774)Updating files:  57% (3292/5774)Updating files:  58% (3349/5774)Updating files:  59% (3407/5774)Updating files:  60% (3465/5774)Updating files:  61% (3523/5774)Updating files:  62% (3580/5774)Updating files:  62% (3617/5774)Updating files:  63% (3638/5774)Updating files:  64% (3696/5774)Updating files:  65% (3754/5774)Updating files:  66% (3811/5774)Updating files:  66% (3868/5774)Updating files:  67% (3869/5774)Updating files:  68% (3927/5774)Updating files:  69% (3985/5774)Updating files:  70% (4042/5774)Updating files:  71% (4100/5774)Updating files:  72% (4158/5774)Updating files:  73% (4216/5774)Updating files:  74% (4273/5774)Updating files:  74% (4323/5774)Updating files:  75% (4331/5774)Updating files:  76% (4389/5774)Updating files:  77% (4446/5774)Updating files:  78% (4504/5774)Updating files:  79% (4562/5774)Updating files:  80% (4620/5774)Updating files:  81% (4677/5774)Updating files:  82% (4735/5774)Updating files:  83% (4793/5774)Updating files:  83% (4805/5774)Updating files:  84% (4851/5774)Updating files:  85% (4908/5774)Updating files:  86% (4966/5774)Updating files:  87% (5024/5774)Updating files:  88% (5082/5774)Updating files:  89% (5139/5774)Updating files:  90% (5197/5774)Updating files:  91% (5255/5774)Updating files:  91% (5287/5774)Updating files:  92% (5313/5774)Updating files:  93% (5370/5774)Updating files:  94% (5428/5774)Updating files:  95% (5486/5774)Updating files:  96% (5544/5774)Updating files:  97% (5601/5774)Updating files:  98% (5659/5774)Updating files:  99% (5717/5774)Updating files:  99% (5759/5774)Updating files: 100% (5774/5774)Updating files: 100% (5774/5774), done.
+--2024-06-13 12:03:07--  https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
+Resolving proxy.ethz.ch (proxy.ethz.ch)... 129.132.202.155
+Connecting to proxy.ethz.ch (proxy.ethz.ch)|129.132.202.155|:3128... connected.
+Proxy request sent, awaiting response... 200 OK
+Length: 9119 (8.9K) [text/plain]
+Saving to: ‘openfold/resources/stereo_chemical_props.txt’
+
+     0K ........                                              100% 7.22M=0.001s
+
+Last-modified header missing -- time-stamps turned off.
+2024-06-13 12:03:07 (7.22 MB/s) - ‘openfold/resources/stereo_chemical_props.txt’ saved [9119/9119]
+
+/cluster/project/beltrao/jjaenes/software/miniconda3/envs/openfold_env/lib/python3.10/site-packages/setuptools/command/install.py:34: SetuptoolsDeprecationWarning: setup.py install is deprecated. Use build and pip and other standards-based tools.
+  warnings.warn(
+/cluster/project/beltrao/jjaenes/software/miniconda3/envs/openfold_env/lib/python3.10/site-packages/setuptools/command/easy_install.py:156: EasyInstallDeprecationWarning: easy_install command is deprecated. Use build and pip and other standards-based tools.
+  warnings.warn(
+/cluster/project/beltrao/jjaenes/software/miniconda3/envs/openfold_env/lib/python3.10/site-packages/torch/utils/cpp_extension.py:414: UserWarning: The detected CUDA version (12.2) has a minor version mismatch with the version that was used to compile PyTorch (12.1). Most likely this shouldn't be a problem.
+  warnings.warn(CUDA_MISMATCH_WARN.format(cuda_str_version, torch.version.cuda))
+/cluster/project/beltrao/jjaenes/software/miniconda3/envs/openfold_env/lib/python3.10/site-packages/torch/utils/cpp_extension.py:424: UserWarning: There are no /cluster/project/beltrao/jjaenes/software/miniconda3/envs/openfold_env/bin/x86_64-conda-linux-gnu-c++ version bounds defined for CUDA version 12.2
+  warnings.warn(f'There are no {compiler_name} version bounds defined for CUDA version {cuda_str_version}')
+Emitting ninja build file /cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold/build/temp.linux-x86_64-3.10/build.ninja...
+Compiling objects...
+Using envvar MAX_JOBS (10) as the number of workers...
+zip_safe flag not set; analyzing archive contents...
+__pycache__.attn_core_inplace_cuda.cpython-310: module references __file__
+openfold.utils.__pycache__.script_utils.cpython-310: module references __file__
+s.................Using /cluster/home/jjaenes/.cache/torch_extensions/py310_cu121 as PyTorch extensions root...
+Detected CUDA files, patching ldflags
+Emitting ninja build file /cluster/home/jjaenes/.cache/torch_extensions/py310_cu121/evoformer_attn/build.ninja...
+Building extension module evoformer_attn...
+Using envvar MAX_JOBS (10) as the number of workers...
+Loading extension module evoformer_attn...
+............s...s.sss.ss.....sssssssss.sss....ssssss..s.s.s.ss.s......s.s..ss...ss.s.s....s........
+----------------------------------------------------------------------
+Ran 117 tests in 260.031s
+
+OK (skipped=41)
