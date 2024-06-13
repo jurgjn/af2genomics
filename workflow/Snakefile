@@ -1,0 +1,152 @@
+
+import ast, collections, datetime, functools, inspect, itertools, math, os, os.path, pickle, requests, shutil, sqlite3, subprocess, sys, zipfile
+from pprint import pprint
+
+import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency
+import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
+import matplotlib, matplotlib.pyplot as plt, matplotlib.patches, seaborn as sns, pandas as pd
+import statsmodels.stats.multitest
+
+import Bio, Bio.Data.IUPACData, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
+
+from af2genomics import *
+
+localrules: af2
+
+rule af2:
+    """
+        gunzip -c resources/afdb/UP000005640_9606_HUMAN_v3/AF-{wildcards.struct_id}-F1-model_v3.pdb.gz > {output.pdb}
+
+        tar -tf UP000005640_9606_HUMAN_v3.tar --wildcards "*.pdb.gz" > UP000005640_9606_HUMAN_v3.txt
+        tar -xf UP000005640_9606_HUMAN_v3.tar --wildcards "*.pdb.gz"
+        ---
+
+        tar -xOf resources/alphafold/UP000005640_9606_HUMAN.tar AF-{wildcards.struct_id}-F1-model_v1.pdb.gz | gunzip -c > {output.pdb}
+        gunzip -c resources/afdb/UP000005640_9606_HUMAN/AF-{wildcards.struct_id}-F1-model_v1.pdb.gz > {output.pdb}
+
+        wget -O {output.pdb} https://alphafold.ebi.ac.uk/files/AF-{wildcards.struct_id}-F1-model_v1.pdb ||\
+        wget -O {output.pdb} https://alphafold.ebi.ac.uk/files/AF-{wildcards.struct_id}-F1-model_v2.pdb ||\
+        wget -O {output.pdb} https://alphafold.ebi.ac.uk/files/AF-{wildcards.struct_id}-F1-model_v3.pdb
+    """
+    output:
+        pdb = pfile(struct_id='{}', step='af2', suffix='.pdb'),
+    shell: """
+        wget -O {output.pdb} https://alphafold.ebi.ac.uk/files/AF-{wildcards.struct_id}-F1-model_v4.pdb
+    """
+
+localrules: trim_bf
+
+rule trim_bf:
+    """
+    Moving-average pLDDT filter
+    """
+    input:
+        pdb = pfile(struct_id='{}', step='{prev_steps}', suffix='.pdb'),
+    output:
+        pdb = pfile(struct_id='{}', step='{prev_steps}.trim_bf', suffix='.pdb'),
+    shell: """
+        pdb_trim_bf --pdbfile {input.pdb} --outpdb {output.pdb}
+    """
+
+rule repairpdb:
+    """
+    Run foldx repairpdb on structure; output the final .pdb, and a .zip archive of the complete output (multiple files per mutation)
+    """
+    input:
+        pdb = pfile(struct_id='{}', step='{prev_steps}', suffix='.pdb'),
+    output:
+        pdb = pfile(struct_id='{}', step='{prev_steps}.repairpdb', suffix='.pdb'),
+        zip = pfile(struct_id='{}', step='{prev_steps}.repairpdb', suffix='.zip'),
+    params:
+        foldx_bin = '/cluster/home/jjaenes/project/software/foldx/foldx_20241231',
+        pdb_dir = lambda wc, input: os.path.dirname(input.pdb),
+        pdb_basename = lambda wc, input, output: os.path.basename(input.pdb),
+    group: 'stability'
+    shell: """
+        OUTPUT_DIR="$TMPDIR/RepairPDB_{wildcards.struct_id}"
+        mkdir -p $OUTPUT_DIR
+        {params.foldx_bin} --command=RepairPDB --pdb-dir={params.pdb_dir} --pdb={params.pdb_basename} --output-dir=$OUTPUT_DIR
+        cd $OUTPUT_DIR
+        zip {wildcards.struct_id}.zip *
+        cd -
+        cp $OUTPUT_DIR/{wildcards.struct_id}_Repair.pdb {output.pdb}
+        cp $OUTPUT_DIR/{wildcards.struct_id}.zip {output.zip}
+    """
+
+def pssm_positions(file):
+    """
+    Generates `--positions` argument for `foldx pssm` to mutate all residues into all possible amino acids
+    The syntax used for `--positions` is described at: https://foldxsuite.crg.eu/command/PositionScan
+    Example/test:
+        print(pssm_positions(pfile(struct_id='Q9Y5Z9', step='af2.trim_bf.repairpdb', suffix='.pdb', base='results/foldx')))
+    """
+    parser = Bio.PDB.PDBParser(QUIET=True)
+    struct = parser.get_structure(file, file)
+    chain, = struct[0].get_chains()
+
+    def get_resseq(resid):
+        return resid.get_id()[1]
+
+    def get_resname(resid):
+        resname3 = str(resid.get_resname()).capitalize()
+        return Bio.Data.IUPACData.protein_letters_3to1[resname3]
+
+    def get_resid_pssmstr(resid):
+        return f'{get_resname(resid)}{chain.id}{get_resseq(resid)}a'
+
+    return ','.join(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R')))
+
+rule pssm:
+    """
+    Calculate ddG values for all residues using `PssmStability` on a monomer structure
+    Pssm segfaults on monomer structures during/after analyseComplex-related steps
+    PssmStability seems to be a lightly documented (https://foldxsuite.crg.eu/command/Pssm) version of the Pssm command intended to be used on monomers
+    """
+    input:
+        pdb = pfile(struct_id='{}', step='{prev_steps}', suffix='.pdb'),
+    output:
+        zip = pfile(struct_id='{}', step='{prev_steps}.pssm', suffix='.zip'),
+    params:
+        foldx_bin = '/cluster/home/jjaenes/project/software/foldx/foldx_20241231',
+        aminoacids = 'ACDEFGHIKLMNPQRSTVWY', # Bio.SeqUtils.IUPACData.protein_letters
+        positions = lambda wc, input: pssm_positions(input.pdb), #'QA5a,VA6a', #lambda wc, input, output: wc.pos,
+        pdb_dir = lambda wc, input: os.path.dirname(input.pdb),
+        pdb_basename = lambda wc, input, output: os.path.basename(input.pdb),
+    group: 'stability'
+    shell: """
+        OUTPUT_DIR="$TMPDIR/PssmStability_{wildcards.struct_id}"
+        mkdir -p $OUTPUT_DIR
+        {params.foldx_bin} --command=PssmStability --aminoacids={params.aminoacids} --positions={params.positions} --pdb-dir={params.pdb_dir} --pdb={params.pdb_basename} --output-dir=$OUTPUT_DIR
+        cd $OUTPUT_DIR
+        zip {wildcards.struct_id}.zip *
+        cd -
+        cp $OUTPUT_DIR/{wildcards.struct_id}.zip {output.zip}
+    """
+
+def some_human():
+    #EGFR/P00533
+    #ERBB2/P04626
+    #TP53/P04637
+    #MED1/Q15648
+    #ATOX1/O00244
+    #UBIAD1/Q9Y5Z9
+    #return ['P00533', 'P04626', 'P04637', 'Q15648' ]
+    return ['O00244', 'Q9Y5Z9', ]
+
+def all_yeast():
+    df_ = pd.read_csv('results/yeast/af2.tsv', names=['pdb_gz'])
+    df_['struct_id'] = df_['pdb_gz'].map(lambda pdb_gz: os.path.basename(pdb_gz).removesuffix('.pdb.gz'))
+    return df_.head(2).tail(1).struct_id.tolist()
+
+rule all:
+    # eu-login-39 $ srun -J pty-$(hostname) --ntasks=1 --mem-per-cpu=16G --time=0-12 --tmp=16384 --pty bash
+    # $ cd -P af2genomics
+    # $ conda activate af2genomics-env
+    # $ profile_euler/run_local all --dry-run
+    # $ profile_euler/run_slurm all --dry-run
+    # $ profile_euler/run_slurm all --keep-going --dry-run
+    # $ profile_euler/run_slurm all --delete-temp-output --dry-run
+    input:
+        [ pfile(struct_id=struct_id, step='af2.trim_bf.repairpdb.pssm', suffix='.zip', base='results/human') for struct_id in some_human() ], # Test on a handful of human structures
+        #[ pfile(struct_id=struct_id, step='af2.trim_bf.repairpdb.pssm', suffix='.zip', base='results/yeast') for struct_id in all_yeast() ],
+ 
