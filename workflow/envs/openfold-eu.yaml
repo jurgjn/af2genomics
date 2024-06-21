@@ -16,7 +16,7 @@ dependencies:
   - pdbfixer
   - pytorch-lightning
   - biopython
-  - numpy
+  - numpy<2 # Fix: A module that was compiled using NumPy 1.x cannot be run in NumPy 2.0.0 as it may crash. /../ If you are a user of the module, the easiest solution will be to downgrade to 'numpy<2' or try to upgrade the affected module.
   - pandas
   - PyYAML==5.4.1
   - requests
@@ -39,4 +39,4 @@ dependencies:
       - deepspeed==0.12.4
       - dm-tree==0.1.6
       - git+https://github.com/NVIDIA/dllogger.git
-      - flash-attn
+      - flash-attn 
