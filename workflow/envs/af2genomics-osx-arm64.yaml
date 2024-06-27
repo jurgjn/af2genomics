@@ -11,3 +11,6 @@ dependencies:
 #- conda-forge::prody # Not available on Mac ARM?
 #- conda-forge::adjusttext
 #- conda-forge::matplotlib-venn
+- pip
+- pip:
+  - bash_kernel
