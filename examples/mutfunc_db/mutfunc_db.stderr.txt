@@ -1,0 +1,67 @@
+[NbConvertApp] Converting notebook mutfunc_db.ipynb to notebook
+Traceback (most recent call last):
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/bin/jupyter-nbconvert", line 11, in <module>
+    sys.exit(main())
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/jupyter_core/application.py", line 280, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/traitlets/config/application.py", line 992, in launch_instance
+    app.start()
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/nbconvertapp.py", line 412, in start
+    self.convert_notebooks()
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/nbconvertapp.py", line 590, in convert_notebooks
+    self.convert_single_notebook(notebook_filename)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/nbconvertapp.py", line 556, in convert_single_notebook
+    output, resources = self.export_single_notebook(
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/nbconvertapp.py", line 479, in export_single_notebook
+    output, resources = self.exporter.from_filename(
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/exporters/exporter.py", line 203, in from_filename
+    return self.from_file(f, resources=resources, **kw)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/exporters/exporter.py", line 222, in from_file
+    return self.from_notebook_node(
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/exporters/notebook.py", line 36, in from_notebook_node
+    nb_copy, resources = super().from_notebook_node(nb, resources, **kw)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/exporters/exporter.py", line 156, in from_notebook_node
+    nb_copy, resources = self._preprocess(nb_copy, resources)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/exporters/exporter.py", line 354, in _preprocess
+    nbc, resc = preprocessor(nbc, resc)  # type:ignore[operator]
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/preprocessors/base.py", line 48, in __call__
+    return self.preprocess(nb, resources)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/preprocessors/execute.py", line 102, in preprocess
+    self.preprocess_cell(cell, resources, index)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbconvert/preprocessors/execute.py", line 123, in preprocess_cell
+    cell = self.execute_cell(cell, index, store_history=True)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/jupyter_core/utils/__init__.py", line 173, in wrapped
+    return loop.run_until_complete(inner)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/asyncio/base_events.py", line 647, in run_until_complete
+    return future.result()
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbclient/client.py", line 1058, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/cluster/project/beltrao/jjaenes/software/miniconda3/envs/af2genomics-env/lib/python3.9/site-packages/nbclient/client.py", line 914, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+date; time cat nfs-ebi-research1-beltrao-wagih.tar.* | tar --one-top-level=nfs-ebi-research1-beltrao-wagih-mutfunc_db -xvf - /nfs/ebi/research1/beltrao/wagih/mutfunc_db
+------------------
+
+----- stdout -----
+Thu Jun 27 03:45:56 PM CEST 2024
+----- stdout -----
+tar: /nfs/ebi/research1/beltrao/wagih/mutfunc_db: Not found in archive
+----- stdout -----
+tar: Exiting with failure status due to previous errors
+----- stdout -----
+
+----- stdout -----
+real	420m5.620s
+----- stdout -----
+user	1m10.128s
+----- stdout -----
+sys	248m56.705s
+------------------
+
+
+
+
+real	420m41.772s
+user	0m13.522s
+sys	0m20.552s
