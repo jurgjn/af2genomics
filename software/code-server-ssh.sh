@@ -1,5 +1,19 @@
 #!/bin/sh
-CODE_SERVER_NODE=`ssh euler.ethz.ch 'squeue --me --name=code-server-gpu --noheader --format="%R"'`
-echo "Starting tunnel to $CODE_SERVER_NODE; passphrase:"
-ssh euler.ethz.ch 'cat .config/code-server/config.yaml'
-ssh euler.ethz.ch -N -L 59123:$CODE_SERVER_NODE.euler.ethz.ch:8898
+CODE_SERVER_NODE=`ssh euler.ethz.ch 'squeue --me --name=code-server --noheader --format="%R"'`
+echo CODE_SERVER_NODE: "${CODE_SERVER_NODE}"
+CODE_SERVER_STAT=`ssh euler.ethz.ch 'squeue --me --name=code-server --noheader --format="%T"'`
+echo CODE_SERVER_STAT: "${CODE_SERVER_STAT}"
+if [ -z "${CODE_SERVER_NODE}" ];
+then
+    echo "Starting code-server job"
+    ssh euler.ethz.ch 'sbatch af2genomics/software/code-server.slurm'
+    ssh euler.ethz.ch 'my_squeue'
+elif [ "${CODE_SERVER_STAT}" != "RUNNING" ];
+then
+    echo "Waiting for code-server job to start:"
+    ssh euler.ethz.ch 'my_squeue'
+else
+    echo "Starting tunnel to $CODE_SERVER_NODE; passphrase:"
+    ssh euler.ethz.ch 'cat .config/code-server/config.yaml'
+    ssh euler.ethz.ch -N -L 59123:$CODE_SERVER_NODE.euler.ethz.ch:8898
+fi
