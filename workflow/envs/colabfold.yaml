@@ -1,0 +1,15 @@
+# mamba env create --file workflow/envs/colabfold.yaml
+# mamba env remove -n colabfold-env -y
+# https://github.com/YoshitakaMo/localcolabfold/blob/main/install_colabbatch_linux.sh
+name: colabfold-env
+channels:
+- bioconda
+- conda-forge
+- defaults
+dependencies:
+- aria2
+- bioconda::mmseqs2
+- python=3.11 
+- pip
+- pip:
+  - colabfold[alphafold]
