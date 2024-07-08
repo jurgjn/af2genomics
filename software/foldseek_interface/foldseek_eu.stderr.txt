@@ -1,0 +1,6 @@
+[NbConvertApp] Converting notebook foldseek_eu.ipynb to notebook
+[NbConvertApp] Writing 67473 bytes to foldseek_eu.ipynb
+
+real	14m34.840s
+user	0m5.735s
+sys	0m0.802s
