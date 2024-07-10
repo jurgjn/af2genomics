@@ -11,6 +11,9 @@ import Bio, Bio.Data.IUPACData, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
 
 from af2genomics import *
 
+include: 'rules/af2.smk'
+include: 'rules/foldx.smk'
+
 def some_human():
     #EGFR/P00533
     #ERBB2/P04626
@@ -19,7 +22,7 @@ def some_human():
     #ATOX1/O00244
     #UBIAD1/Q9Y5Z9
     #return ['P00533', 'P04626', 'P04637', 'Q15648' ]
-    return ['O00244', 'Q9Y5Z9', ]
+    return ['O00244-F1', 'Q9Y5Z9-F1', ]
 
 def all_yeast():
     df_ = pd.read_csv('results/yeast/af2.tsv', names=['pdb_gz'])
@@ -35,6 +38,6 @@ rule all:
     # $ profile_euler/run_slurm all --keep-going --dry-run
     # $ profile_euler/run_slurm all --delete-temp-output --dry-run
     input:
-        [ pfile(struct_id=struct_id, step='af2.trim_bf.repairpdb.pssm', suffix='.zip', base='results/human') for struct_id in some_human() ], # Test on a handful of human structures
+        [ pfile(struct_id=struct_id, step='af2.trim_bf.repairpdb.pssm', suffix='.tsv', base='results/human') for struct_id in some_human() ], # Test on a handful of human structures
         #[ pfile(struct_id=struct_id, step='af2.trim_bf.repairpdb.pssm', suffix='.zip', base='results/yeast') for struct_id in all_yeast() ],
  
