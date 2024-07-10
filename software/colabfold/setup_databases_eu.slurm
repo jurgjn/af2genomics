@@ -7,6 +7,7 @@
 #SBATCH --output=setup_databases_eu.stdout.txt
 #SBATCH --error=setup_databases_eu.stderr.txt
 source /cluster/home/jjaenes/.bashrc
+module load eth_proxy
 conda activate colabfold-env
 cd /cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/colabfold
 mkdir -p database
