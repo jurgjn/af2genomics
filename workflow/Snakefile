@@ -21,8 +21,7 @@ def some_human():
     #MED1/Q15648
     #ATOX1/O00244
     #UBIAD1/Q9Y5Z9
-    #return ['P00533', 'P04626', 'P04637', 'Q15648' ]
-    return ['O00244-F1', 'Q9Y5Z9-F1', ]
+    return ['P00533-F1', 'P04626-F1', 'P04637-F1', 'Q15648-F1', 'O00244-F1', 'Q9Y5Z9-F1', ]
 
 def all_yeast():
     df_ = pd.read_csv('results/yeast/af2.tsv', names=['pdb_gz'])

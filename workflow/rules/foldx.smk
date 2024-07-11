@@ -59,8 +59,8 @@ def pssm_positions(file):
     def get_resid_pssmstr(resid):
         return f'{get_resname(resid)}{chain.id}{get_resseq(resid)}a'
 
-    #return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R')))[:3])
-    return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R'))))
+    return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R')))[:2])
+    #return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R'))))
 
 def pssm_write_summary(output_dir, struct_id, out_tsv):
     #zip_ = '../../results/foldx/af2.repairpdb.pssm/Q9/Y5/Z9/Q9Y5Z9.zip'
@@ -112,18 +112,12 @@ rule pssm:
     run:
         shell('mkdir -p {params.output_dir}')
         shell('{params.foldx_bin} --command=PssmStability --aminoacids={params.aminoacids} --positions={params.positions} --pdb-dir={params.pdb_dir} --pdb={params.pdb_basename} --output-dir={params.output_dir}')
+        #Uncomment to keep full output as a .zip archive; this will be in GBs per structure
+        #shell("""
+        #    cd {params.output_dir}
+        #    zip {wildcards.struct_id}.zip *
+        #    cd -
+        #    cp {params.output_dir}/{wildcards.struct_id}.zip {output.zip}
+        #""")
         pssm_write_summary(params.output_dir, wildcards.struct_id, output.tsv)
         shell("sstat --all --parsable2 --job $SLURM_JOB_ID | tr '|' '\\t' > {output.sstat}")
-
-# Only keep summary stats, discard structures etc..
-#mkdir -p {params.output_dir}
-#{params.foldx_bin} --command=PssmStability --aminoacids={params.aminoacids} --positions={params.positions} --pdb-dir={params.pdb_dir} --pdb={params.pdb_basename} --output-dir={params.output_dir}
-#cd {params.output_dir}
-#zip {wildcards.struct_id}.zip *
-#cd -
-#cp {params.output_dir}/{wildcards.struct_id}.zip {output.zip}
-#echo "{pssm_write_summary(params.output_dir, wildcards.struct_id, output.tsv)}"
-#sstat --all --parsable2 --job $SLURM_JOB_ID | tr '|' '\\t' > {output.sstat}
-# Move OUTPUT_DIR to params:
-#OUTPUT_DIR="$TMPDIR/PssmStability_{wildcards.struct_id}"
-#mkdir -p $OUTPUT_DIR
