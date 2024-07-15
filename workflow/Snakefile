@@ -15,4 +15,6 @@ include: 'rules/af2.smk'
 include: 'rules/foldx.smk'
 
 #include: 'targets/human.smk'
-include: 'targets/yeast.smk'
+#include: 'targets/yeast.smk'
+
+#include: 'targets/openfold.smk'
