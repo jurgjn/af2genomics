@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Fix headers: https://www.biostars.org/p/248906/
+curl https://rest.uniprot.org/uniprotkb/$1.fasta | awk '{if ($0 ~ /^>/)  {split($0,a,"|"); print ">"a[2]} else { print;}}' -
