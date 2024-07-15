@@ -1,18 +1,4 @@
 
-localrules: trim_bf
-
-rule trim_bf:
-    """
-    Moving-average pLDDT filter
-    """
-    input:
-        pdb = pfile(struct_id='{}', step='{prev_steps}', suffix='.pdb'),
-    output:
-        pdb = pfile(struct_id='{}', step='{prev_steps}.trim_bf', suffix='.pdb'),
-    shell: """
-        pdb_trim_bf --pdbfile {input.pdb} --outpdb {output.pdb}
-    """
-
 rule repairpdb:
     """
     Run foldx repairpdb on structure; output the final .pdb, and a .zip archive of the complete output (multiple files per mutation)
