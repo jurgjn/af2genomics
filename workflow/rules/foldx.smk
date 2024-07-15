@@ -21,7 +21,7 @@ rule repairpdb:
         pdb = pfile(struct_id='{}', step='{prev_steps}', suffix='.pdb'),
     output:
         pdb = pfile(struct_id='{}', step='{prev_steps}.repairpdb', suffix='.pdb'),
-        zip = pfile(struct_id='{}', step='{prev_steps}.repairpdb', suffix='.zip'),
+        #zip = pfile(struct_id='{}', step='{prev_steps}.repairpdb', suffix='.zip'),
     params:
         foldx_bin = '/cluster/home/jjaenes/project/software/foldx/foldx_20241231',
         pdb_dir = lambda wc, input: os.path.dirname(input.pdb),
@@ -31,11 +31,11 @@ rule repairpdb:
         OUTPUT_DIR="$TMPDIR/RepairPDB_{wildcards.struct_id}"
         mkdir -p $OUTPUT_DIR
         {params.foldx_bin} --command=RepairPDB --pdb-dir={params.pdb_dir} --pdb={params.pdb_basename} --output-dir=$OUTPUT_DIR
-        cd $OUTPUT_DIR
-        zip {wildcards.struct_id}.zip *
-        cd -
+        #cd $OUTPUT_DIR
+        #zip {wildcards.struct_id}.zip *
+        #cd -
         cp $OUTPUT_DIR/{wildcards.struct_id}_Repair.pdb {output.pdb}
-        cp $OUTPUT_DIR/{wildcards.struct_id}.zip {output.zip}
+        #cp $OUTPUT_DIR/{wildcards.struct_id}.zip output.zip
     """
 
 def pssm_positions(file):
@@ -59,8 +59,8 @@ def pssm_positions(file):
     def get_resid_pssmstr(resid):
         return f'{get_resname(resid)}{chain.id}{get_resseq(resid)}a'
 
-    return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R')))[:2])
-    #return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R'))))
+    #return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R')))[:2])
+    return ','.join(list(map(get_resid_pssmstr, Bio.PDB.Selection.unfold_entities(struct[0][chain.id], 'R'))))
 
 def pssm_write_summary(output_dir, struct_id, out_tsv):
     #zip_ = '../../results/foldx/af2.repairpdb.pssm/Q9/Y5/Z9/Q9Y5Z9.zip'
