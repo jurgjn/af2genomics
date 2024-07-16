@@ -1,45 +1,31 @@
 
-rule run_unit_tests:
-    """
-    openfold rules need snakemake started in openfold_env
-        $ module load stack/2024-05 gcc/13.2.0 cuda/12.2.1
-        $ conda activate openfold_env
-        $ profile_euler/run_local run_unit_tests --snakefile workflow/targets/openfold.smk --dry-run
-    """
-    params:
-        openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
+rule fasta_file:
+    output:
+        fasta = 'results/openfold/fasta_dir/{uniprot_id}.fasta',
     shell: """
-        module list
-        cd {params.openfold_dir}
-        date; time scripts/run_unit_tests.sh
+        workflow/scripts/curl_uniprot {wildcards.uniprot_id} > {output.fasta}
     """
 
+def fasta_dir_input():
+    import pandas as pd, af2genomics
+    return ['Q71U36', 'P07437'] + pd.read_excel(af2genomics.workpath('24.07.08_tubb/Protein list for test run.xlsx'), names=['uniprot_id'])['uniprot_id'].tolist()
+
 rule fasta_dir:
-    # eu-login-39 $ srun -J pty-$(hostname) --ntasks=1 --mem-per-cpu=16G --time=0-12 --tmp=16384 --pty bash
-    # $ cd -P af2genomics
     # $ conda activate af2genomics-env
-    # $ profile_euler/run_local fasta_dir --dry-run
-    # $ profile_euler/run_slurm fasta_dir --dry-run
-    # $ profile_euler/run_slurm fasta_dir --keep-going --dry-run
-    # $ profile_euler/run_slurm fasta_dir --delete-temp-output --dry-run
-    output:
-        fasta_dir = directory('results/openfold/fasta_dir'),
-    shell: """
-        mkdir -p {output.fasta_dir}
-        workflow/scripts/curl_uniprot Q71U36 > {output.fasta_dir}/Q71U36.fasta
-        workflow/scripts/curl_uniprot P07437 > {output.fasta_dir}/P07437.fasta
-        workflow/scripts/curl_uniprot O43663 > {output.fasta_dir}/O43663.fasta
-    """
+    # $ profile_euler/run_local fasta_dir --snakefile workflow/targets/openfold.smk --dry-run
+    input:
+        expand('results/openfold/fasta_dir/{uniprot_id}.fasta', uniprot_id=fasta_dir_input()),
 
 rule precompute_alignments:
     # $ rm -rf results/openfold/fasta_msas
+    # $ conda activate openfold_env
     # $ profile_euler/run_local precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
-    # $ profile_euler/run_sbatch precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
+    # $ sbatch results/openfold/fasta_msas.slurm
     input:
         dir = 'results/openfold/fasta_dir',
     output:
         dir = directory('results/openfold/fasta_msas'),
-        sstat = 'results/openfold/fasta_msas.sstat.tsv',
+        sstat = 'results/openfold/fasta_msas/.sstat.tsv',
     threads: 8
     params:
         openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
@@ -74,12 +60,13 @@ rule run_pretrained_openfold_multimer:
     # mkdir -p fasta_dir_multimer
     # cat fasta_dir/O43663.fasta fasta_dir/P07437.fasta fasta_dir/Q71U36.fasta > fasta_dir_multimer/O43663_P07437_Q71U36.fasta
     # profile_euler/run_local run_pretrained_openfold_multimer --snakefile workflow/targets/openfold.smk --dry-run
+    # https://openfold.readthedocs.io/en/latest/Inference.html#advanced-options-for-increasing-efficiency
     input:
         fasta_dir = 'results/openfold/fasta_dir_multimer',
         use_precomputed_alignments = 'results/openfold/fasta_msas',
     output:
         dir = directory('results/openfold/run_multimer'),
-        sstat = 'results/openfold/run_multimer.sstat.tsv',
+        sstat = 'results/openfold/run_multimer/.sstat.tsv',
     threads: 8
     params:
         openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
@@ -109,7 +96,34 @@ rule run_pretrained_openfold_multimer:
             --max_template_date '1950-01-01' \
             --cpus {threads} \
             --skip_relaxation \
+            --use_deepspeed_evoformer_attention \
+            --trace_model \
             --model_device 'cuda:0'
         cd -
         workflow/scripts/sstat_eu > {output.sstat}
+    """
+
+rule run_pretrained_openfold_help:
+    # profile_euler/run_local run_pretrained_openfold_help --snakefile workflow/targets/openfold.smk --dry-run
+    params:
+        openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
+        workdir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics',
+    shell: """
+        cd {params.openfold_dir}
+        date; time python3 run_pretrained_openfold.py --help
+    """
+
+rule run_unit_tests:
+    """
+    openfold rules need snakemake started in openfold_env
+        $ module load stack/2024-05 gcc/13.2.0 cuda/12.2.1
+        $ conda activate openfold_env
+        $ profile_euler/run_local run_unit_tests --snakefile workflow/targets/openfold.smk --dry-run
+    """
+    params:
+        openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
+    shell: """
+        module list
+        cd {params.openfold_dir}
+        date; time scripts/run_unit_tests.sh
     """
