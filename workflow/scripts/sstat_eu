@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+sstat --all --parsable2 --job $SLURM_JOB_ID | tr '|' '\t'
