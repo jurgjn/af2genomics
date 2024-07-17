@@ -1,38 +1,64 @@
 
+import os, os.path
+
+localrules: fasta_file
+
 rule fasta_file:
     output:
-        fasta = 'results/openfold/fasta_dir/{uniprot_id}.fasta',
+        fasta = 'results/openfold/fasta/{uniprot_id}.fasta',
     shell: """
         workflow/scripts/curl_uniprot {wildcards.uniprot_id} > {output.fasta}
     """
 
-def fasta_dir_input():
-    import pandas as pd, af2genomics
-    return ['Q71U36', 'P07437'] + pd.read_excel(af2genomics.workpath('24.07.08_tubb/Protein list for test run.xlsx'), names=['uniprot_id'])['uniprot_id'].tolist()
+def fasta_input():
+    with open('/cluster/work/beltrao/jjaenes/24.07.08_tubb/adhoc.tsv') as f:
+        lines = f.read().splitlines()
+    return ['Q71U36', 'P07437'] + lines
 
-rule fasta_dir:
-    # $ conda activate af2genomics-env
+rule fasta:
     # $ profile_euler/run_local fasta_dir --snakefile workflow/targets/openfold.smk --dry-run
     input:
-        expand('results/openfold/fasta_dir/{uniprot_id}.fasta', uniprot_id=fasta_dir_input()),
+        expand('results/openfold/fasta/{uniprot_id}.fasta', uniprot_id=fasta_input()),
+
+def scratchpath(path):
+    # https://scicomp.ethz.ch/wiki/Storage_systems#Local_scratch_.28on_each_compute_node.29
+    dir_ = os.environ["TMPDIR"]
+    return os.path.join(dir_, path)
 
 rule precompute_alignments:
-    # $ rm -rf results/openfold/fasta_msas
+    # $ rm -rf results/openfold/precompute_alignments
     # $ conda activate openfold_env
     # $ profile_euler/run_local precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
     # $ sbatch results/openfold/fasta_msas.slurm
     input:
-        dir = 'results/openfold/fasta_dir',
+        fasta = 'results/openfold/fasta/{uniprot_id}.fasta',
     output:
-        dir = directory('results/openfold/fasta_msas'),
-        sstat = 'results/openfold/fasta_msas/.sstat.tsv',
+        bfd_uniref_hits = 'results/openfold/precompute_alignments/{uniprot_id}/bfd_uniref_hits.a3m',
+        hmm_output = 'results/openfold/precompute_alignments/{uniprot_id}/hmm_output.sto',
+        mgnify_hits = 'results/openfold/precompute_alignments/{uniprot_id}/mgnify_hits.sto',
+        uniprot_hits = 'results/openfold/precompute_alignments/{uniprot_id}/uniprot_hits.sto',
+        uniref90_hits = 'results/openfold/precompute_alignments/{uniprot_id}/uniref90_hits.sto',
+        sstat = 'results/openfold/precompute_alignments/{uniprot_id}/stat.tsv',
     threads: 8
     params:
         openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
+        fasta_dir_scratch = lambda wc: scratchpath(f'fasta_{wc.uniprot_id}'),
+        output_dir = lambda wc: f'results/openfold/precompute_alignments',
+        output_dir_scratch = lambda wc: scratchpath(f'precompute_alignments_{wc.uniprot_id}'),
         workdir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics',
     shell: """
-        mkdir -p {output.dir}
-        module list
+        echo {params.openfold_dir}
+        echo {params.fasta_dir_scratch}
+        echo {params.output_dir}
+        echo {params.output_dir_scratch}
+        echo {params.workdir}
+        # Set up input directory on scratch
+        mkdir -p {params.fasta_dir_scratch}
+        cp {input.fasta} {params.fasta_dir_scratch}/
+        ls -l {params.fasta_dir_scratch}/
+        # Make output directory on scratch
+        mkdir -p {params.output_dir_scratch}
+        # Run OpenFold on input on scratch
         cd {params.openfold_dir}
         # Turn off templates --max_template_date '1950-01-01' from: https://harvardmed.atlassian.net/wiki/spaces/O2/pages/1995177985/Using+AlphaFold+on+O2
         export BASE_DATA_DIR='/cluster/project/alphafold'
@@ -51,10 +77,29 @@ rule precompute_alignments:
             --kalign_binary_path kalign \
             --max_template_date '1950-01-01' \
             --cpus_per_task {threads} \
-            {params.workdir}/{input.dir} {params.workdir}/{output.dir}
+            {params.fasta_dir_scratch} {params.output_dir_scratch}
+        # Dummy output for testing
+        #mkdir -p {params.output_dir_scratch}/{wildcards.uniprot_id}
+        #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/bfd_uniref_hits.a3m
+        #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/hmm_output.sto
+        #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/mgnify_hits.sto
+        #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/uniprot_hits.sto
+        #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/uniref90_hits.sto
         cd -
+        # Copy output from scratch to work
+        rsync -av {params.output_dir_scratch}/{wildcards.uniprot_id} {params.output_dir}
+        # Log resources used
         workflow/scripts/sstat_eu > {output.sstat}
     """
+
+rule precompute_alignments_:
+    # $ rm -rf results/openfold/precompute_alignments
+    # $ conda activate openfold_env
+    # $ profile_euler/run_local precompute_alignments_ --snakefile workflow/targets/openfold.smk --dry-run
+    # $ profile_euler/run_slurm precompute_alignments_ --snakefile workflow/targets/openfold.smk --dry-run
+    input:
+        'results/openfold/precompute_alignments/O00483/stat.tsv',
+        'results/openfold/precompute_alignments/O60925/stat.tsv',
 
 rule run_pretrained_openfold_multimer:
     # mkdir -p fasta_dir_multimer

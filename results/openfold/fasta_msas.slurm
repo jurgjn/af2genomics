@@ -3,7 +3,7 @@
 #SBATCH --ntasks=10
 #SBATCH --mem-per-cpu=10G
 #SBATCH --tmp=16834
-#SBATCH --time=3-00:00:00
+#SBATCH --time=7-00:00:00
 #SBATCH --output=results/openfold/fasta_msas.stdout.txt
 #SBATCH --error=results/openfold/fasta_msas.stderr.txt
 source /cluster/home/jjaenes/.bashrc
