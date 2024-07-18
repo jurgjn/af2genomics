@@ -1,0 +1,29 @@
+# Adapted: https://github.com/jdblischak/smk-simple-slurm/
+# found via: https://stackoverflow.com/questions/76675147/srun-not-found-snakemake-on-slurm
+# to Euler-specifics from: https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements
+cluster:
+  sbatch
+    --account=es_biol
+    --partition=es_biol
+    --ntasks={threads}
+    --mem-per-cpu={resources.mem_per_cpu}
+    --time={resources.time}
+    --job-name=smk-{rule}-{wildcards}
+    --error=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.err.txt
+    --output=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.out.txt
+    --parsable
+cluster-cancel: scancel
+cluster-status: workflow/profiles/sbatch/cluster-status.py
+use-conda: True
+latency-wait: 60
+jobs: 500
+default-resources:
+  - account=es_biol
+  - partition_account=es_biol
+  - threads=1
+  - mem_per_cpu='8G'
+  - time='00:30:00'
+set-resources:
+  - precompute_alignments:threads=8
+  - precompute_alignments:mem_per_cpu='2G'
+  - precompute_alignments:time='1-00:00:00'

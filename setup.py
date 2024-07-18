@@ -1,5 +1,5 @@
 
-import setuptools
+import glob, setuptools
 
 setuptools.setup(
     name = 'af2genomics',
@@ -7,7 +7,7 @@ setuptools.setup(
     author = 'jurgjn',
     author_email = 'jurgjn@users.noreply.github.com',
     url = 'https://github.com/jurgjn/af2genomics',
-    scripts = ['workflow/scripts/pdb_trim_bf'],
+    scripts = glob.glob('workflow/scripts/*'),
     classifiers = [
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',

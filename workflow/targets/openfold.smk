@@ -28,8 +28,8 @@ def scratchpath(path):
 rule precompute_alignments:
     # $ rm -rf results/openfold/precompute_alignments
     # $ conda activate openfold_env
-    # $ profile_euler/run_local precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
-    # $ sbatch results/openfold/fasta_msas.slurm
+    # $ smk_local precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
+    # $ smk_slurm precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
     input:
         fasta = 'results/openfold/fasta/{uniprot_id}.fasta',
     output:
@@ -39,7 +39,6 @@ rule precompute_alignments:
         uniprot_hits = 'results/openfold/precompute_alignments/{uniprot_id}/uniprot_hits.sto',
         uniref90_hits = 'results/openfold/precompute_alignments/{uniprot_id}/uniref90_hits.sto',
         sstat = 'results/openfold/precompute_alignments/{uniprot_id}/stat.tsv',
-    threads: 8
     params:
         openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
         fasta_dir_scratch = lambda wc: scratchpath(f'fasta_{wc.uniprot_id}'),
@@ -85,6 +84,7 @@ rule precompute_alignments:
         #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/mgnify_hits.sto
         #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/uniprot_hits.sto
         #touch {params.output_dir_scratch}/{wildcards.uniprot_id}/uniref90_hits.sto
+        #sleep 10
         cd -
         # Copy output from scratch to work
         rsync -av {params.output_dir_scratch}/{wildcards.uniprot_id} {params.output_dir}
@@ -95,11 +95,10 @@ rule precompute_alignments:
 rule precompute_alignments_:
     # $ rm -rf results/openfold/precompute_alignments
     # $ conda activate openfold_env
-    # $ profile_euler/run_local precompute_alignments_ --snakefile workflow/targets/openfold.smk --dry-run
-    # $ profile_euler/run_slurm precompute_alignments_ --snakefile workflow/targets/openfold.smk --dry-run
+    # $ smk_local precompute_alignments_ --snakefile workflow/targets/openfold.smk --dry-run
+    # $ sbatch workflow/targets/openfold.slurm 
     input:
-        'results/openfold/precompute_alignments/O00483/stat.tsv',
-        'results/openfold/precompute_alignments/O60925/stat.tsv',
+        expand('results/openfold/precompute_alignments/{uniprot_id}/stat.tsv', uniprot_id=fasta_input()[:10]),
 
 rule run_pretrained_openfold_multimer:
     # mkdir -p fasta_dir_multimer
