@@ -29,7 +29,7 @@ rule precompute_alignments:
     # $ rm -rf results/openfold/precompute_alignments
     # $ conda activate openfold_env
     # $ smk_local precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
-    # $ smk_slurm precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
+    # $ smk slurm precompute_alignments --snakefile workflow/targets/openfold.smk --dry-run
     input:
         fasta = 'results/openfold/fasta/{uniprot_id}.fasta',
     output:

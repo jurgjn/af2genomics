@@ -24,6 +24,7 @@ default-resources:
   - mem_per_cpu='8G'
   - time='00:30:00'
 set-resources:
+  - precompute_alignments:cores=8
   - precompute_alignments:threads=8
-  - precompute_alignments:mem_per_cpu='2G'
+  - precompute_alignments:mem_per_cpu='32G'
   - precompute_alignments:time='1-00:00:00'
