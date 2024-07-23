@@ -13,6 +13,7 @@ cluster-generic-submit-cmd:
     --time={resources.time}
     --output=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.out
     --parsable
+cluster-generic-status-cmd: status-sacct.sh
 cluster-generic-cancel-cmd: scancel
 default-resources:
   - threads=1
@@ -37,5 +38,3 @@ rerun-incomplete: True
 printshellcmds: True
 scheduler: greedy
 use-conda: True
-
-
