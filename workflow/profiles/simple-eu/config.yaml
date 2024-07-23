@@ -1,0 +1,41 @@
+# Adapted: https://github.com/jdblischak/smk-simple-slurm/
+# found via: https://stackoverflow.com/questions/76675147/srun-not-found-snakemake-on-slurm
+# to Euler-specifics from: https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements
+executor: cluster-generic
+cluster-generic-submit-cmd:
+  mkdir -p .snakemake_sbatch/{rule} &&
+  sbatch
+    --account=es_biol
+    --partition=es_biol
+    --job-name=smk-{rule}-{wildcards}
+    --ntasks=1
+    --cpus-per-task={resources.threads}
+    --time={resources.time}
+    --output=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.out
+    --parsable
+cluster-generic-cancel-cmd: scancel
+default-resources:
+  - threads=1
+  - mem_per_cpu='8G'
+  - time='00:30:00'
+set-resources:
+  - precompute_alignments:threads=8
+  - precompute_alignments:mem_per_cpu='32G'
+  - precompute_alignments:time='1-00:00:00'
+  - repairpdb:mem_per_cpu='4G'
+  - repairpdb:time='1-00:00:00'
+  - pssm:mem_per_cpu='4G'
+  - pssm:time='1-00:00:00'
+restart-times: 3
+max-jobs-per-second: 10
+max-status-checks-per-second: 1
+local-cores: 1
+latency-wait: 60
+jobs: 500
+keep-going: True
+rerun-incomplete: True
+printshellcmds: True
+scheduler: greedy
+use-conda: True
+
+
