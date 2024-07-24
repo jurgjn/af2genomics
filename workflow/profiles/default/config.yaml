@@ -9,19 +9,20 @@ cluster-generic-submit-cmd:
     --partition=es_biol
     --job-name=smk-{rule}-{wildcards}
     --ntasks=1
-    --cpus-per-task={resources.threads}
+    --cpus-per-task={threads}
     --time={resources.time}
     --output=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.out
     --parsable
 cluster-generic-status-cmd: status-sacct.sh
 cluster-generic-cancel-cmd: scancel
+cluster-generic-cancel-nargs: 50
+set-threads:
+  - precompute_alignments=8
 default-resources:
-  - threads=1
   - mem_per_cpu='8G'
   - time='00:30:00'
 set-resources:
-  - precompute_alignments:threads=8
-  - precompute_alignments:mem_per_cpu='32G'
+  - precompute_alignments:mem_per_cpu='256G'
   - precompute_alignments:time='1-00:00:00'
   - repairpdb:mem_per_cpu='4G'
   - repairpdb:time='1-00:00:00'
