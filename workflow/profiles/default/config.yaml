@@ -1,18 +1,21 @@
 # Adapted: https://github.com/jdblischak/smk-simple-slurm/
 # found via: https://stackoverflow.com/questions/76675147/srun-not-found-snakemake-on-slurm
 # to Euler-specifics from: https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements
+#
 # Check memory/other allocated resources with:
-#     sacct --format JobID,User,State,AllocCPUS,Elapsed,NNodes,NTasks,ReqMem,ExitCode -j 3006749
+# $ sacct --format JobID,State,AllocCPUS,NNodes,NTasks,ReqMem,Elapsed,Timelimit -j 3010332
+# $ myjobs -j 3010332
 executor: cluster-generic
 cluster-generic-submit-cmd:
   mkdir -p .snakemake_sbatch/{rule} &&
   sbatch
-    --account=es_biol
-    --partition=es_biol
+    --account={resources.account}
+    --partition={resources.partition}
     --job-name=smk-{rule}-{wildcards}
     --ntasks=1 --cpus-per-task={threads}
-    --time={resources.time}
     --mem-per-cpu=`expr {resources.mem_mb} / {threads}`
+    --time={resources.time}
+    --tmp={resources.disk_mb}
     --output=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.out
     --parsable
 cluster-generic-status-cmd: status-sacct.sh
@@ -22,14 +25,13 @@ set-threads:
   - precompute_alignments=8
   - run_pretrained_openfold_multimer=8
 default-resources:
+  - account=es_biol
+  - partition=es_biol
   # https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements
   - time='00:30:00'
   - mem_mb=1024
-  # https://scicomp.ethz.ch/wiki/Using_local_scratch
-  - tmp=1024
-  # Set standard resources (unused on Euler) to zero to make them slightly less confusing; see e.g. https://github.com/jdblischak/smk-simple-slurm/tree/main/examples/mem-gb
-  - disk_mb=0
-  - disk_mib=0
+  # Use `disk_mb` for local scratch: https://scicomp.ethz.ch/wiki/Using_local_scratch
+  - disk_mb=1024
 set-resources:
   - repairpdb:mem_mb=4096
   - repairpdb:time='1-00:00:00'
@@ -38,13 +40,13 @@ set-resources:
   # Requirements in SIS script: https://gitlab.ethz.ch/sis/alphafold_on_euler/-/blob/main/setup_run_script_AF2.3.1/setup_alphafold_run_script.sh?ref_type=heads#L163-217
   - precompute_alignments:time='1-00:00:00'
   - precompute_alignments:mem_mb=131072
-  - precompute_alignments:tmp=131072
+  - precompute_alignments:disk_mb=131072
   # https://scicomp.ethz.ch/wiki/Using_the_batch_system#GPU
   - run_pretrained_openfold_multimer:gpus='rtx_4090:1'
   - run_pretrained_openfold_multimer:gres='gpumem:16g'
   - run_pretrained_openfold_multimer:time='1-00:00:00'
   - run_pretrained_openfold_multimer:mem_mb=131072
-  - run_pretrained_openfold_multimer:tmp=131072
+  - run_pretrained_openfold_multimer:disk_mb=131072
 restart-times: 0
 max-jobs-per-second: 10
 max-status-checks-per-second: 1
