@@ -2,7 +2,7 @@
 # found via: https://stackoverflow.com/questions/76675147/srun-not-found-snakemake-on-slurm
 # to Euler-specifics from: https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements
 # Check memory/other allocated resources with:
-#     sacct --format JobID,User,State,AllocCPUS,Elapsed,NNodes,NTasks,ReqMem,ExitCode -j 2991054
+#     sacct --format JobID,User,State,AllocCPUS,Elapsed,NNodes,NTasks,ReqMem,ExitCode -j 3006749
 executor: cluster-generic
 cluster-generic-submit-cmd:
   mkdir -p .snakemake_sbatch/{rule} &&
@@ -12,7 +12,7 @@ cluster-generic-submit-cmd:
     --job-name=smk-{rule}-{wildcards}
     --ntasks=1 --cpus-per-task={threads}
     --time={resources.time}
-    --mem-per-cpu={resources.mem_per_cpu}
+    --mem-per-cpu=`expr {resources.mem_mb} / {threads}`
     --output=.snakemake_sbatch/{rule}/{rule}-{wildcards}-%j.out
     --parsable
 cluster-generic-status-cmd: status-sacct.sh
@@ -23,29 +23,27 @@ set-threads:
   - run_pretrained_openfold_multimer=8
 default-resources:
   # https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements
-  - mem_per_cpu=8192
   - time='00:30:00'
+  - mem_mb=1024
   # https://scicomp.ethz.ch/wiki/Using_local_scratch
   - tmp=1024
   # Set standard resources (unused on Euler) to zero to make them slightly less confusing; see e.g. https://github.com/jdblischak/smk-simple-slurm/tree/main/examples/mem-gb
-  - mem_mb=0
-  - mem_mib=0
   - disk_mb=0
   - disk_mib=0
 set-resources:
-  - repairpdb:mem_per_cpu=4096
+  - repairpdb:mem_mb=4096
   - repairpdb:time='1-00:00:00'
-  - pssm:mem_per_cpu=4096
+  - pssm:mem_mb=4096
   - pssm:time='1-00:00:00'
   # Requirements in SIS script: https://gitlab.ethz.ch/sis/alphafold_on_euler/-/blob/main/setup_run_script_AF2.3.1/setup_alphafold_run_script.sh?ref_type=heads#L163-217
   - precompute_alignments:time='1-00:00:00'
-  - precompute_alignments:mem_per_cpu=16384
+  - precompute_alignments:mem_mb=131072
   - precompute_alignments:tmp=131072
   # https://scicomp.ethz.ch/wiki/Using_the_batch_system#GPU
   - run_pretrained_openfold_multimer:gpus='rtx_4090:1'
   - run_pretrained_openfold_multimer:gres='gpumem:16g'
   - run_pretrained_openfold_multimer:time='1-00:00:00'
-  - run_pretrained_openfold_multimer:mem_per_cpu=16384
+  - run_pretrained_openfold_multimer:mem_mb=131072
   - run_pretrained_openfold_multimer:tmp=131072
 restart-times: 0
 max-jobs-per-second: 10
