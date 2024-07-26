@@ -39,6 +39,9 @@ rule precompute_alignments:
         uniprot_hits = 'results/openfold/precompute_alignments/{uniprot_id}/uniprot_hits.sto',
         uniref90_hits = 'results/openfold/precompute_alignments/{uniprot_id}/uniref90_hits.sto',
         sstat = 'results/openfold/precompute_alignments/{uniprot_id}/stat.tsv',
+    conda: 'openfold_env'
+    resources:
+        runtime=lambda wildcards, attempt: ['4h', '1d', '3d', '1w'][attempt - 1]
     params:
         openfold_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/openfold',
         fasta_dir_scratch = lambda wc: scratchpath(f'fasta_{wc.uniprot_id}'),
@@ -92,13 +95,13 @@ rule precompute_alignments:
         workflow/scripts/sstat_eu > {output.sstat}
     """
 
-rule precompute_alignments_:
+rule precompute_alignments_all:
     # $ rm -rf results/openfold/precompute_alignments
     # $ conda activate openfold_env
     # $ smk_local precompute_alignments_ --snakefile workflow/targets/openfold.smk --dry-run
-    # $ sbatch workflow/targets/openfold.slurm 
+    # date; time snakemake precompute_alignments_all --snakefile workflow/targets/openfold.smk --unlock
     input:
-        expand('results/openfold/precompute_alignments/{uniprot_id}/stat.tsv', uniprot_id=fasta_input()[:10]),
+        expand('results/openfold/precompute_alignments/{uniprot_id}/stat.tsv', uniprot_id=fasta_input()),
 
 rule run_pretrained_openfold_multimer:
     # mkdir -p fasta_dir_multimer

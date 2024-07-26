@@ -1,6 +1,6 @@
-The default profile tries to map snakemake [standard resources](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#standard-resources)
-to the [Euler's resource requirements](https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements),
-mostly adapting from [jdblischak/smk-simple-slurm](https://github.com/jdblischak/smk-simple-slurm).
+The default profile maps snakemake [standard resources](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#standard-resources)
+to [Euler equivalents](https://scicomp.ethz.ch/wiki/Using_the_batch_system#Resource_requirements)
+by adapting [jdblischak/smk-simple-slurm](https://github.com/jdblischak/smk-simple-slurm).
 
 - `threads` sets number of cores; mapped to `--ntasks`
 - `mem_mb` sets total RAM; mapped to `--mem-per-cpu` by accounting for cores: `expr {resources.mem_mb} / {threads}`

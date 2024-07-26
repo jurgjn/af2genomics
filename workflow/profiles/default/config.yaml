@@ -39,7 +39,7 @@ set-resources:
   - run_pretrained_openfold_multimer:disk_mb=131072
   - run_pretrained_openfold_multimer:runtime=1d
   - run_pretrained_openfold_multimer:xtra_args='--gpus=rtx_4090:1 --gres=gpumem:16g'
-restart-times: 0
+restart-times: 3
 max-jobs-per-second: 10
 max-status-checks-per-second: 1
 local-cores: 1

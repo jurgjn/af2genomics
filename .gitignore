@@ -1,5 +1,6 @@
 # Project-specific
 .snakemake/
+.snakemake_output/
 results/
 software/
 
