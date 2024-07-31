@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# https://snakemake.readthedocs.io/en/v7.19.1/executing/cluster.html#generic-cluster-support
+#https://scicomp.ethz.ch/wiki/LSF_to_Slurm_quick_reference
+export XDG_CACHE_HOME=$(pwd)/_run_sbatch/source_cache
+TIMESTAMP=$(date +"%y-%m-%d_%H%M")
+mkdir -p _run_sbatch/logs/$TIMESTAMP
+time snakemake $@ --jobs 500 --local-cores $SLURM_NTASKS --latency-wait 60 --use-conda --cluster "sbatch \
+--account=es_biol --partition=es_biol \
+--ntasks=8 \
+--mem-per-cpu=2048 \
+--time=12:00:00 \
+--job-name=run_sbatch_{rule} \
+--output=_run_sbatch/logs/$TIMESTAMP/%J_{rule}.stdout.txt \
+--error=_run_sbatch/logs/$TIMESTAMP/%J_{rule}.stderr.txt \
+" --cluster-cancel scancel

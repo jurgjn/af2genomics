@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Log GPU params
+nvidia-smi --query-gpu=index,count,timestamp,name,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used --format=csv,nounits | sed 's/, /\t/g'

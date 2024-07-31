@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+squeue --me --format="%.18i %.12P %.50j %.8u %.8T %.16M %.16l %.6D %20R"

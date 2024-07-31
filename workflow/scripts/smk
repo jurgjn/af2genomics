@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+date; time snakemake --profile workflow/profiles/$@ --local-cores $SLURM_NTASKS

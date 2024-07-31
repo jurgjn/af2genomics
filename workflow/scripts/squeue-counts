@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+squeue --me --format="%.12T" | awk "NR>1" | sort | uniq -c
