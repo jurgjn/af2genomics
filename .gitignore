@@ -1,8 +1,14 @@
 # Project-specific
+.cache/
+.nv/
 .snakemake/
 .snakemake_output/
 results/
 software/
+
+# Data files
+*.csv
+*.fasta
 
 # https://stackoverflow.com/questions/11829708/how-to-keep-git-from-tracking-all-files-that-end-with-a
 *~
