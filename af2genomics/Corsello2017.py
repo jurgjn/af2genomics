@@ -1,7 +1,7 @@
 
 import pandas as pd
 
-from af2genomics.core import *
+from af2genomics.common import *
 
 def smi_largest_component(smiles):
     #https://github.com/dkoes/rdkit-scripts/blob/master/rdconf.py#L80
@@ -19,13 +19,14 @@ def smi_strip_chemaxon(smiles):
 
 def read_samples():
     fp_ = workpath('23.07.25_Corsello2017/repurposing_samples_20240610.txt')
-    df_ = pd.read_csv(fp_, comment='!', sep='\t')
+    df_ = pd.read_csv(fp_, comment='!', sep='\t')#.rename({'pert_iname': 'compound_id'}, axis=1)
     printlen(df_, 'raw samples')
-    df_ = df_.query('qc_incompatible == 0').copy()
-    printlen(df_, 'after qc filtering')
+    printlen(df_.drop_duplicates(subset=['pert_iname']), 'unique compounds')
+
     df_['smiles'] = [* map(lambda smiles: smi_largest_component(smi_strip_chemaxon(smiles)), df_['smiles']) ]
     #df_['n_unique_smiles'] = df_.groupby('pert_iname')['smiles'].transform(lambda x: len(set(x)))
-    df_ = df_.sort_values('purity', ascending=False)[['pert_iname', 'smiles']].drop_duplicates(keep='first').rename({'pert_iname': 'compound_id'}, axis=1)
-    df_ = df_.sort_values('compound_id').reset_index(drop=True)
-    assert all(df_['compound_id'] == df_['compound_id'])
+    #printlen(df_.query('n_unique_smiles > 1').drop_duplicates(subset=['pert_iname']), 'compounds with non-unique smiles')
+
+    #df_ = df_.drop_duplicates(subset=['pert_iname'], keep='first').reset_index(drop=True)
+    #printlen(df_, 'compounds/SMILES after dedup')
     return df_

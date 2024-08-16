@@ -11,6 +11,10 @@ def workpath(path):
     dir_ = '/cluster/work/beltrao/jjaenes'
     return os.path.join(dir_, path)
 
+def af2genomicspath(path):
+    dir_ = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics'
+    return os.path.join(dir_, path)
+
 def uf(x):
     return '{:,}'.format(x)
 

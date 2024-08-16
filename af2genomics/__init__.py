@@ -3,9 +3,8 @@ import ast, collections, datetime, functools, inspect, itertools, math, os, pand
 import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotlib, matplotlib.pyplot as plt, seaborn as sns
 import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
 
-from af2genomics.core import *
-from af2genomics import Corsello2017
-__all__ = ['Corsello2017']
+from af2genomics.common import *
+__all__ = ['Corsello2017', 'huintaf2', 'PRISM']
 
 try:
     import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
