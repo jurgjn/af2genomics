@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
+# Log resources used by running sstat with current SLURM jobid; tab-separated output
 sstat --all --parsable2 --job $SLURM_JOB_ID | tr '|' '\t'

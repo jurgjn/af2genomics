@@ -1,2 +1,3 @@
 #!/usr/bin/env bash
+# Show cluster jobs by state
 squeue --me --format="%.12T" | awk "NR>1" | sort | uniq -c

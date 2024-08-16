@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-squeue --me --states=RUNNING,PENDING --Format=jobid,name --noheader | grep smk-GROUP-base | awk '{print $1}' | xargs scancel
+squeue --me --states=RUNNING,PENDING --Format=jobid,name --noheader | grep smk-pssm-base | awk '{print $1}' | xargs scancel

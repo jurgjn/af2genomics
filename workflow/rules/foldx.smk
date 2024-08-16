@@ -12,7 +12,6 @@ rule repairpdb:
         foldx_bin = '/cluster/home/jjaenes/project/software/foldx/foldx_20241231',
         pdb_dir = lambda wc, input: os.path.dirname(input.pdb),
         pdb_basename = lambda wc, input, output: os.path.basename(input.pdb),
-    group: 'stability'
     shell: """
         OUTPUT_DIR="$TMPDIR/RepairPDB_{wildcards.struct_id}"
         mkdir -p $OUTPUT_DIR
@@ -94,7 +93,9 @@ rule pssm:
         pdb_dir = lambda wc, input: os.path.dirname(input.pdb),
         pdb_basename = lambda wc, input, output: os.path.basename(input.pdb),
         output_dir = lambda wc: f'{os.environ["TMPDIR"]}/PssmStability_{wc.struct_id}',
-    group: 'stability'
+    resources:
+        #runtime = lambda wildcards, attempt: ['4h', '1d', '3d', '1w'][attempt - 1]
+        runtime = lambda wildcards, attempt: ['3d', '1w'][attempt - 1]
     run:
         shell('mkdir -p {params.output_dir}')
         shell('{params.foldx_bin} --command=PssmStability --aminoacids={params.aminoacids} --positions={params.positions} --pdb-dir={params.pdb_dir} --pdb={params.pdb_basename} --output-dir={params.output_dir}')

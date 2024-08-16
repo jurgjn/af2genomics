@@ -8,13 +8,26 @@ import matplotlib, matplotlib.pyplot as plt, matplotlib.patches, seaborn as sns,
 import statsmodels.stats.multitest
 
 import Bio, Bio.Data.IUPACData, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
+import openbabel, openbabel.pybel
 
 from af2genomics import *
+
+wildcard_constraints: # Constrain wildcards to prevent rule ambiguities: https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#wildcards
+    # Compounds: prism/a/afatinib, adhoc/q/quercetin, ...
+    compound_pref = r'adhoc|astex|gdsc|pharmgkb|prism_\w?|rhub|xdock', # prism/a/afatinib, adhoc/q/quercetin, ...
+    compound_id = r'(\w|\%|\-)+', # Any word, percentage, hyphen
+    # Structures: always start with a UniProt id, e.g. P00533_s_3qwq_e7 (SWISS_MODEL) or P00533_model1 (RoseTTAFold)
+    struct_pref = r'\w\w\/\w\w\/\w\w',
+    struct_id = r'(\w|\-|_)+',  
+    screen_id = r'(\w|\%|\-)+', # Any word, percentage, hyphen
+    prev_steps = r'(\w|\.)*?', # zero or more word characters or a dot, minimal match
+    base = r'results\/(\w|\-|_|\.)+', # base directory under results/
 
 include: 'rules/af2.smk'
 include: 'rules/foldx.smk'
 
 #include: 'targets/human.smk'
-include: 'targets/yeast.smk'
-
+#include: 'targets/yeast.smk'
 #include: 'targets/openfold.smk'
+
+#include: '../results/ligands/diffdock.smk'
