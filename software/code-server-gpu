@@ -1,12 +1,12 @@
 #!/bin/sh
-CODE_SERVER_NODE=`ssh euler.ethz.ch 'squeue --me --name=code-server --noheader --format="%R"'`
+CODE_SERVER_NODE=`ssh euler.ethz.ch 'squeue --me --name=code-server-gpu --noheader --format="%R"'`
 echo CODE_SERVER_NODE: "${CODE_SERVER_NODE}"
-CODE_SERVER_STAT=`ssh euler.ethz.ch 'squeue --me --name=code-server --noheader --format="%T"'`
+CODE_SERVER_STAT=`ssh euler.ethz.ch 'squeue --me --name=code-server-gpu --noheader --format="%T"'`
 echo CODE_SERVER_STAT: "${CODE_SERVER_STAT}"
 if [ -z "${CODE_SERVER_NODE}" ];
 then
     echo "Starting code-server job"
-    ssh euler.ethz.ch 'sbatch af2genomics/software/code-server.slurm'
+    ssh euler.ethz.ch 'sbatch af2genomics/software/code-server-gpu.sbatch'
     ssh euler.ethz.ch 'my_squeue'
 elif [ "${CODE_SERVER_STAT}" != "RUNNING" ];
 then
