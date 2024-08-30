@@ -2,7 +2,7 @@
 .cache/
 .nv/
 .snakemake/
-.snakemake_output/
+logs/
 results/
 software/
 
