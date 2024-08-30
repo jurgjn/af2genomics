@@ -1,13 +1,17 @@
-name: af2genomics-env
+name: af2genomics-envA
 channels:
 - bioconda
 - conda-forge
 - defaults
 dependencies:
 - anaconda
-- bioconda::snakemake-minimal
+- bioconda::snakemake>=8
+- bioconda::snakemake-executor-plugin-cluster-generic
 - conda-forge::biopython
 - conda-forge::openbabel
-- conda-forge::prody
+- conda-forge::matplotlib-venn
+#- conda-forge::prody
 #- conda-forge::adjusttext
-#- conda-forge::matplotlib-venn
+- pip # Warning: you have pip-installed dependencies in your environment file, but you do not list pip itself as one of your conda dependencies.
+- pip:
+  - bash_kernel
