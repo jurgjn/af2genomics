@@ -227,6 +227,11 @@ def query_missense_uniprot_id(uniprot_id):
         df_ = pd.read_sql_query(sql=f'SELECT * FROM missense WHERE variant_id GLOB "{uniprot_id}*"', con=db)
     return df_
 
+def query_missense_yeast(variants):
+    with sqlite3.connect(workpath('24.08.30_yeast_missense/yeast_missense.sqlite')) as db:
+        df_ = pd.read_sql_query(sql='SELECT * FROM missense WHERE variant_id in ' + str(tuple(variants)), con=db)
+    return df_.set_index('variant_id').loc[variants].reset_index()
+
 def read_pockets_resid(pocket_score):
     # Pockets, one per 
     #Q96EK7-F1      157
