@@ -4,7 +4,7 @@ import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotli
 import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
 
 from af2genomics.common import *
-__all__ = ['Corsello2017', 'huintaf2', 'PRISM']
+__all__ = ['Corsello2017', 'huintaf2', 'ligands', 'PRISM']
 
 try:
     import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils

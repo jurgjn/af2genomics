@@ -10,6 +10,7 @@ import statsmodels.stats.multitest
 import Bio, Bio.Data.IUPACData, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
 import openbabel, openbabel.pybel
 
+import af2genomics
 from af2genomics import *
 
 wildcard_constraints: # Constrain wildcards to prevent rule ambiguities: https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#wildcards

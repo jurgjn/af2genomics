@@ -1,7 +1,23 @@
 set-resources:
-  - repairpdb:mem_mb=4096
-  - repairpdb:disk_mb=4096
-  - repairpdb:runtime=4h
-  - pssm:mem_mb=4096
-  - pssm:disk_mb=4096
-  #- pssm:runtime=22h - dynamic
+  repairpdb:
+    runtime: f"{['4h', '1d', '3d', '1w'][attempt - 1]}"
+    mem_mb: 4096
+    disk_mb: 4096
+  pssm:
+    runtime: f"{['1d', '3d', '1w'][attempt - 1]}"
+    mem_mb: 4096
+    disk_mb: 4096
+  diffdock_out:
+    runtime: f"{['4h', '1d', '3d', '1w'][attempt - 1]}"
+    mem_mb: 32768
+    slurm_extra: "'--gpus=1 --gres=gpumem%11g'"
+  diffdock_scores:
+    runtime: 4h
+    mem_mb: 4096
+#retries: # Unclear if this actually does anything
+#  diffdock_out: 4
+use-conda: True
+use-envmodules: True
+use-singularity: True
+singularity-args: "--nv -B $HOME,/cluster/project/beltrao/jjaenes,/cluster/work/beltrao/jjaenes"
+restart-times: 0
