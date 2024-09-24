@@ -33,6 +33,7 @@ def extended_primary_compound_list(v=True):
     fp_ = workpath('23.07.25_PRISM_Repurposing_23Q2/Repurposing_Public_23Q2_Extended_Primary_Compound_List.csv')
     df_ = pd.read_csv(fp_, index_col=0)
     printlen(df_, 'raw compounds')
+    return df_
 
     df_['Drug.Name'] = df_['Drug.Name'].str.lower()
 

@@ -1,3 +1,6 @@
+cores: 16 # https://github.com/snakemake/snakemake/issues/2997
+set-threads:
+  gnina_cl: 16
 set-resources:
   repairpdb:
     runtime: f"{['4h', '1d', '3d', '1w'][attempt - 1]}"
@@ -8,16 +11,19 @@ set-resources:
     mem_mb: 4096
     disk_mb: 4096
   diffdock_out:
-    runtime: f"{['4h', '1d', '3d', '1w'][attempt - 1]}"
+    runtime: f"{['3d', '1w'][attempt - 1]}"
     mem_mb: 32768
-    slurm_extra: "'--gpus=1 --gres=gpumem%11g'"
-  diffdock_scores:
-    runtime: 4h
+    slurm_extra: "'--gpus=1 --gres=gpumem%24g'"
+  diffdock_rescore:
+    runtime: 1d
+    mem_mb: 16384
+  gnina_cl:
+    runtime: 1d
     mem_mb: 4096
-#retries: # Unclear if this actually does anything
-#  diffdock_out: 4
+    slurm_extra: "'--gpus=1 --gres=gpumem%4g'"
 use-conda: True
 use-envmodules: True
 use-singularity: True
-singularity-args: "--nv -B $HOME,/cluster/project/beltrao/jjaenes,/cluster/work/beltrao/jjaenes"
+singularity-args: "--nv -B $HOME,/cluster/project/beltrao/jjaenes,/cluster/work/beltrao/jjaenes,/scratch"
 restart-times: 0
+rerun-incomplete: True

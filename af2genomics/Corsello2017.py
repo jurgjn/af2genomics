@@ -3,20 +3,6 @@ import pandas as pd
 
 from af2genomics.common import *
 
-def smi_largest_component(smiles):
-    #https://github.com/dkoes/rdkit-scripts/blob/master/rdconf.py#L80
-    if '.' in smiles:
-        return max(smiles.split('.'), key=len)
-    else:
-        return smiles
-
-def smi_strip_chemaxon(smiles):
-    # Remove Chemaxon extensions from SMILES string
-    # https://chemistry.stackexchange.com/questions/47242/what-is-this-smiles-notation-csicc-11
-    if ' |' in smiles:
-        smiles = smiles.split()[0]
-    return smiles
-
 def read_samples():
     fp_ = workpath('23.07.25_Corsello2017/repurposing_samples_20240610.txt')
     df_ = pd.read_csv(fp_, comment='!', sep='\t')#.rename({'pert_iname': 'compound_id'}, axis=1)
@@ -30,3 +16,15 @@ def read_samples():
     #df_ = df_.drop_duplicates(subset=['pert_iname'], keep='first').reset_index(drop=True)
     #printlen(df_, 'compounds/SMILES after dedup')
     return df_
+
+def Corsello2017_smiles():
+    return read_samples()[['broad_id', 'smiles']].drop_duplicates(keep='first').reset_index(drop=True)
+
+def Corsello2020_smiles():
+    df_ = pd.read_excel(workpath('23.07.25_PRISM_Repurposing_23Q2/43018_2019_18_MOESM2_ESM.xlsx'), sheet_name=1, header=2)[['broad_id', 'smiles']]
+    df_['smiles'] = df_['smiles'].str.split(',')
+    df_ = df_.explode('smiles')
+    df_['smiles'] = df_['smiles'].str.lstrip().str.rstrip()
+    df_['smiles'] = [* map(lambda smiles: smi_largest_component(smi_strip_chemaxon(smiles)), df_['smiles']) ]
+    df_ = df_.drop_duplicates()
+    return df_.query('smiles == smiles').reset_index(drop=True)
