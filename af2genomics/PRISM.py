@@ -2,8 +2,11 @@
 import ast, collections, datetime, functools, inspect, itertools, math, os, pandas as pd, requests, sqlite3, subprocess, sys, urllib, zipfile
 import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotlib, matplotlib.pyplot as plt, seaborn as sns
 import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
+import tqdm, tqdm.contrib, tqdm.contrib, tqdm.contrib.concurrent
 
 from af2genomics.common import *
+
+import af2genomics, af2genomics.ligands
 
 from . import Corsello2017
 
@@ -48,6 +51,35 @@ def extended_primary_compound_list(v=True):
     df_ = df_.query('(150 < expected_mass) & (expected_mass < 1000)')
     printlen(df_, 'after filtering for mass')
     return df_
+
+@functools.cache
+def extended_primary_compound_list_adj(v=True):
+    df_ = extended_primary_compound_list()
+    df_['Drug.Name'] = df_['Drug.Name'].str.lower()
+
+    df_Corsello2017 = resources.Corsello2017.read_samples()[['broad_id', 'pert_iname', 'smiles']]
+    df_Corsello2017['broad_id'] = 'BRD:' + df_Corsello2017['broad_id']
+    df_merge_ = df_.merge(df_Corsello2017, left_on='IDs', right_on='broad_id', how='left').drop(['broad_id', 'pert_iname'], axis=1)
+    return df_merge_
+
+@functools.cache
+def extended_primary_data_matrix_adj():
+    df_drugs_ = extended_primary_compound_list_adj()[['IDs', 'Drug.Name']].set_index('IDs', drop=True).drop_duplicates().rename({'Drug.Name': 'compound_name'}, axis=1)
+    df_ = df_drugs_.merge(extended_primary_data_matrix(), left_index=True, right_index=True).set_index('compound_name', drop=True)
+    return df_.transpose()
+
+def read_associations(compound_id):
+    fp_ = pfile(compound_id=f'prism_{penc(compound_id)}', step='prism_23Q2', suffix='.h5', base='/cluster/project/beltrao/jjaenes/22.12_pocketomes/results/23.04_bindfunc/')
+    df_ = pd.read_hdf(fp_, key='summary')
+    df_.insert(loc=0, column='compound_id', value=compound_id)
+    return df_
+
+def read_associations_gene_read_(ligand_id, hugo_symbol):
+    return read_associations(ligand_id).query('hugo_symbol == @hugo_symbol')
+
+def read_associations_gene(hugo_symbol):
+    l_ = af2genomics.ligands.read_Corsello2020_compounds().compound_id#[:10]
+    return pd.concat(list(tqdm.contrib.concurrent.process_map(read_associations_gene_read_, l_, itertools.repeat(hugo_symbol, len(l_)), chunksize=10)), axis=0)
 
 #@functools.cache
 #def extended_primary_compound_list_adj(v=True):

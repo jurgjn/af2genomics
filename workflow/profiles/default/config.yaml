@@ -1,5 +1,9 @@
-cores: 16 # https://github.com/snakemake/snakemake/issues/2997
 set-threads:
+  repairpdb: 1
+  pssm: 1
+  diffdock_out: 1
+  diffdock_rescore: 1
+  gnina_summary: 1
   gnina_cl: 16
 set-resources:
   repairpdb:
@@ -19,11 +23,13 @@ set-resources:
     mem_mb: 16384
   gnina_cl:
     runtime: 1d
-    mem_mb: 4096
-    slurm_extra: "'--gpus=1 --gres=gpumem%4g'"
+    mem_mb: 8192
+    # GPU:
+    #mem_mb: 4096
+    #slurm_extra: "'--gpus=1 --gres=gpumem%4g'"
 use-conda: True
 use-envmodules: True
 use-singularity: True
-singularity-args: "--nv -B $HOME,/cluster/project/beltrao/jjaenes,/cluster/work/beltrao/jjaenes,/scratch"
+singularity-args: "--nv -B $HOME,$PROJECT,$WORK,$TMPDIR"
 restart-times: 0
 rerun-incomplete: True

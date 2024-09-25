@@ -1,8 +1,8 @@
 #!/bin/bash -l
-# ./sbatch-af2genomics ligands | sbatch
-# date; time snakemake --profile smk-simple-slurm-eu --snakefile workflow/Snakefile-ligands.smk --rerun-triggers input
+# rm -rf logs results/ligands/af2.trim_bf.obabel_hxr.autosite.lig_rdconf.gnina_cl results/ligands/af2.trim_bf.obabel_hxr.autosite.lig_rdconf.gnina_summary results/ligands/lig_rdconf
+# ./sbatch-af2genomics | sbatch
 LOGS_DATE=logs/`date +"%y-%m-%d"`
-JOBNAME=sbatch-af2genomics:$1
+JOBNAME=sbatch-af2genomics
 cat - <<EOF
 #!/usr/bin/env bash
 #SBATCH --job-name=$JOBNAME
@@ -14,6 +14,6 @@ source /cluster/home/jjaenes/.bashrc
 module load eth_proxy
 conda activate af2genomics-envA
 date; time snakemake --profile smk-simple-slurm-eu --unlock
-date; time snakemake --profile smk-simple-slurm-eu --snakefile workflow/Snakefile-$1.smk --rerun-triggers input
+date; time snakemake --profile smk-simple-slurm-eu all --rerun-triggers input
 myjobs -j \$SLURM_JOB_ID
 EOF
