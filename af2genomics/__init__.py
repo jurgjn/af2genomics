@@ -4,7 +4,7 @@ import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotli
 import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
 
 from af2genomics.common import *
-__all__ = ['Corsello2017', 'huintaf2', 'ligands', 'PRISM']
+__all__ = ['Corsello2017', 'DepMap', 'foldx', 'huintaf2', 'ligands', 'PRISM']
 
 try:
     import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
@@ -36,7 +36,13 @@ def printlenq(frame, q, *args, **kwargs):
 
 @functools.cache
 def slurm_ntasks():
-    return int(os.environ['SLURM_NTASKS'])
+    try:
+        return int(os.environ['SLURM_NTASKS'])
+    except:
+        return 4 # nproc --all?
+
+def tqdm_map(function, iterable):
+    return tqdm.contrib.concurrent.process_map(function, iterable, max_workers=slurm_ntasks(), chunksize=10)
 
 def phead(df, n=3):
     print(uf(len(df)), 'records')
@@ -1024,6 +1030,7 @@ def read_pharmgkb():
     df_ = pd.read_csv(workpath('23.07.03_pharmgkb/24.04.24_protvar.tsv'), sep='\t')
     return df_.query('`Level of Evidence` in @evidence_')
 
+@functools.cache
 def get_uniprot_sequence(accession):
     url = f'https://rest.uniprot.org/uniprotkb/search?query={accession}&fields=sequence'
     return requests.get(url).json()['results'][0]['sequence']['value']
