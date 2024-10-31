@@ -1,0 +1,12 @@
+# conda env create --file workflow/envs/ensembl-vep.yaml
+# conda env remove -n ensembl-vep-env -y
+# Extra perl modules:
+#    cpan cpanm
+#    cpanm Archive::Zip DBI DBD::mysql Set::IntervalTree JSON PerlIO::gzip Bio::DB::BigFile 
+name: ensembl-vep
+channels:
+- bioconda
+- conda-forge
+- defaults
+dependencies:
+- perl=5.26

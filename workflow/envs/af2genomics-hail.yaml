@@ -1,0 +1,8 @@
+name: af2genomics-hail-env
+channels:
+- bioconda
+- conda-forge
+- defaults
+dependencies:
+- anaconda
+- bioconda::hail # Access GeneBass data sets: https://app.genebass.org/downloads

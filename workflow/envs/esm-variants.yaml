@@ -1,0 +1,14 @@
+name: esm-variants-env 
+channels:
+- bioconda
+- conda-forge
+- defaults
+- pytorch
+- nvidia 
+dependencies:
+- python
+- tqdm
+- numpy
+- pandas
+- biopython
+- fair-esm

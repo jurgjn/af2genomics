@@ -1,0 +1,11 @@
+# conda env create --file workflow/envs/gcloud.yaml
+# conda env remove --name gcloud-env
+name: gcloud-env
+channels:
+- bioconda
+- conda-forge
+- defaults
+dependencies:
+- google-cloud-sdk # This has gcloud
+#- conda-forge::gsutil # This has gsutil; seems to hard conflict with google-cloud-sdk
+- pip

@@ -1,0 +1,14 @@
+name: code-server-env
+channels:
+- bioconda
+- conda-forge
+- defaults
+dependencies:
+- anaconda
+- code-server
+- bioconda::snakemake-minimal
+- conda-forge::biopython
+- conda-forge::openbabel
+- conda-forge::prody
+#- conda-forge::adjusttext
+#- conda-forge::matplotlib-venn
