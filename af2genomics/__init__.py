@@ -1270,4 +1270,32 @@ class ROC:
         s_.index.name='metric'
         return s_
 
+def edc(pdb_file, disease_resseq, min_pLDDT=70):
+    resseq_pLDDT = collections.OrderedDict()
+    parser = Bio.PDB.PDBParser(QUIET=True)
+    struct = parser.get_structure(pdb_file, pdb_file)
+
+    def is_CA(a):
+        return a.get_id() == 'CA'
+    def is_disease(a):
+        return a.get_parent().get_id()[1] in disease_resseq
+    def is_pLDDT(a):
+        return a.get_bfactor() >= min_pLDDT
+
+    filtered_atoms = list(filter(lambda a: is_CA(a), Bio.PDB.Selection.unfold_entities(struct[0], 'A')))
+    disease_atoms = list(filter(lambda a: is_disease(a), filtered_atoms))
+    healthy_atoms = list(filter(lambda a: not is_disease(a), filtered_atoms))
+    #print(len(filtered_atoms), len(disease_atoms), len(healthy_atoms), 'filtered/disease/healthy atoms')
+
+    def kth(k, l):
+        return l[k], l[:k] + l[(k + 1):]
+
+    def kth_disease_mindist(k):
+        atm, etc = kth(k, disease_atoms)
+        return min(atm - atm_etc for atm_etc in etc)
+
+    disease_mindist = [* map(kth_disease_mindist, range(len(disease_atoms))) ]
+    healthy_mindist = [ min(healthy_atom - disease_atom for disease_atom in disease_atoms) for healthy_atom in healthy_atoms ]
+    return np.mean(np.log(healthy_mindist)) / np.mean(np.log(disease_mindist))
+
 __all__.extend([name for (name, thing) in locals().items() if callable(thing)]) #https://stackoverflow.com/questions/18451541/getting-a-list-of-locally-defined-functions-in-python
