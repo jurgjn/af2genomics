@@ -4,7 +4,7 @@ import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotli
 import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
 
 from af2genomics.common import *
-__all__ = ['Corsello2017', 'DepMap', 'foldx', 'huintaf2', 'ligands', 'PRISM']
+__all__ = ['alphafold3', 'Corsello2017', 'DepMap', 'foldx', 'huintaf2', 'ligands', 'PRISM']
 
 try:
     import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
@@ -1297,5 +1297,8 @@ def edc(pdb_file, disease_resseq, min_pLDDT=70):
     disease_mindist = [* map(kth_disease_mindist, range(len(disease_atoms))) ]
     healthy_mindist = [ min(healthy_atom - disease_atom for disease_atom in disease_atoms) for healthy_atom in healthy_atoms ]
     return np.mean(np.log(healthy_mindist)) / np.mean(np.log(disease_mindist))
+
+def read_afdb_genes():
+    return pd.read_csv('~/af2genomics/results/human/af2.tsv', sep='\t').query('n_frags == 1')
 
 __all__.extend([name for (name, thing) in locals().items() if callable(thing)]) #https://stackoverflow.com/questions/18451541/getting-a-list-of-locally-defined-functions-in-python
