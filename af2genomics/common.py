@@ -1,5 +1,7 @@
 
-import inspect, os, os.path
+import inspect, os, os.path, urllib.parse
+
+import tqdm.contrib.concurrent
 
 def projectpath(path):
     #dir_ = os.path.dirname(__file__)
@@ -9,6 +11,14 @@ def projectpath(path):
 def workpath(path):
     #dir_ = os.path.dirname(__file__)
     dir_ = '/cluster/work/beltrao/jjaenes'
+    return os.path.join(dir_, path)
+
+def localprojectpath(path):
+    dir_ = '/Users/jjaenes/euler-home/project'
+    return os.path.join(dir_, path)
+
+def localworkpath(path):
+    dir_ = '/Users/jjaenes/euler-home/work'
     return os.path.join(dir_, path)
 
 def af2genomicspath(path):
@@ -112,3 +122,4 @@ def pfile(asset_id=None, compound_id=None, struct_id=None, screen_id=None, step=
     filepath = os.path.join(base, step, f'{asset_id}{suffix}')
     if v: print('pfile: ', filepath)
     return filepath
+

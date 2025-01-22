@@ -77,6 +77,7 @@ def read_associations(compound_id):
 def read_associations_gene_read_(ligand_id, hugo_symbol):
     return read_associations(ligand_id).query('hugo_symbol == @hugo_symbol')
 
+@functools.cache
 def read_associations_gene(hugo_symbol):
     l_ = af2genomics.ligands.read_Corsello2020_compounds().compound_id#[:10]
     return pd.concat(list(tqdm.contrib.concurrent.process_map(read_associations_gene_read_, l_, itertools.repeat(hugo_symbol, len(l_)), chunksize=10)), axis=0)

@@ -44,9 +44,10 @@ def AnalyseComplex(pdb):
     #return df_Indiv_energies_, df_Interaction_, df_Interface_Residues_, df_Summary_
 
     # Interface residues:
+    resid_ = df_Interface_Residues_.squeeze()
     #l_resid = list(filter(len, df_Interface_Residues_.squeeze().split('\t')))
     #return l_resid
 
     # Interaction energy
     interaction_energy = df_Interaction_['Interaction Energy'].squeeze()
-    return interaction_energy
+    return interaction_energy, resid_
