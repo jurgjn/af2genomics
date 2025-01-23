@@ -1,4 +1,8 @@
 ```
+conda env create --file AlphaCutter/environment.yml
+```
+
+```
 sbatch openfold-setup.slurm
 ```
 

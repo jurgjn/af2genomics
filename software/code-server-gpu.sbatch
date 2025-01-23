@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=code-server-gpu
-#SBATCH --ntasks=10
-#SBATCH --mem-per-cpu=10G
+#SBATCH --ntasks=16
+#SBATCH --mem-per-cpu=4G
 #SBATCH --gpus=rtx_4090:1
 #SBATCH --gres=gpumem:16g
 #SBATCH --tmp=16834

@@ -1,5 +1,6 @@
 # conda env create --file workflow/envs/gcloud.yaml
 # conda env remove --name gcloud-env
+# gcloud components install gcloud-crc32c
 name: gcloud-env
 channels:
 - bioconda

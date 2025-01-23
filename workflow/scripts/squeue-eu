@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 # Format spec: https://slurm.schedmd.com/squeue.html
-squeue --me --format="%.18i %.12P %.80j %.8u %.8T %.16M %.16l %.6D %40R"
+squeue --me --format="%.18i %.12P %.80j %.8T %.16M %.16l %40R" | column -t --table-right 1,5,6

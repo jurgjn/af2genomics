@@ -1,15 +1,15 @@
 # conda env create --file workflow/envs/af2genomics.yaml
 # conda env remove --name af2genomics-env1
-name: af2genomics-env1
+name: af2genomics-env2
 channels:
 - bioconda
 - conda-forge
 - defaults
 dependencies:
 - anaconda
-- snakemake-minimal==8.16 # https://github.com/snakemake/snakemake/issues/3019
-- snakemake-executor-plugin-cluster-generic
-- wget
+#- snakemake-minimal==8.16 # https://github.com/snakemake/snakemake/issues/3019
+#- snakemake-executor-plugin-cluster-generic
+#- wget
 - conda-forge::biopython
 - conda-forge::openbabel
 - conda-forge::matplotlib-venn
@@ -18,5 +18,5 @@ dependencies:
 #- bioconda::hail # Exists but ancient (whereas pip version up-to-date...)
 - pip # Warning: you have pip-installed dependencies in your environment file, but you do not list pip itself as one of your conda dependencies.
 - pip:
-  - bash_kernel
+  #- bash_kernel
   - hail # Access GeneBass data sets: https://app.genebass.org/downloads

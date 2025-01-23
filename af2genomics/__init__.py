@@ -4,7 +4,7 @@ import numpy as np, scipy as sp, scipy.stats, scipy.stats.contingency, matplotli
 import sklearn as sk, sklearn.decomposition, sklearn.linear_model, sklearn.metrics, sklearn.naive_bayes, sklearn.preprocessing
 
 from af2genomics.common import *
-__all__ = ['alphafold3', 'Corsello2017', 'DepMap', 'foldx', 'huintaf2', 'ligands', 'PRISM']
+__all__ = ['alphafold3', 'Corsello2017', 'DepMap', 'foldx', 'huintaf2', 'ligands', 'missense_human', 'missense_yeast', 'PRISM']
 
 try:
     import Bio, Bio.PDB, Bio.SVDSuperimposer, Bio.SeqUtils
@@ -126,6 +126,30 @@ def g_convert(query=["CASQ2", "CASQ1", "GSTO1", "DMD", "GSTM2"], target='UNIPROT
     r = requests.post(url='https://biit.cs.ut.ee/gprofiler/api/convert/convert/', json=locals())
     df_ = pd.DataFrame(r.json()['result'])
     return df_
+
+def g_merge(left, right, left_on, right_on, organism='hsapiens', target='ENSG', v=False):
+    if v: printlen(left, left_on)
+    if v: printlen(right, right_on)
+    left_g = left.merge(g_convert(left[left_on].tolist(), organism=organism, target=target)[['incoming', 'converted']].rename({'incoming': left_on, 'converted': target}, axis=1), on=left_on)
+    if v: printlen(left_g, 'after converting left to ENSG including multi-mappings')
+    left_g = left_g.query(f'{target} != "None"')
+    if v: printlen(left_g, 'after removing empty mappings')
+
+    right_g = right.merge(g_convert(right[right_on].tolist(), organism=organism, target=target)[['incoming', 'converted']].rename({'incoming': right_on, 'converted': target}, axis=1), on=right_on)
+    if v: printlen(right_g, 'after converting right ENSG including multi-mappings')
+    right_g = right_g.query(f'{target} != "None"')
+    if v: printlen(right_g, 'after removing empty mappings')
+
+    merge = left_g.merge(right_g, on=target)
+    if v: printlen(merge, 'after merge')
+
+    m_dup_ = merge.duplicated(subset=left_on, keep=False) | merge.duplicated(subset=right_on, keep=False)
+    merge = merge[~m_dup_]
+
+    n_start = min(len(left), len(right))
+    n_merge = len(merge)
+    printlen(merge, f'of {uf(n_start)} uniquely mapped over {target}')
+    return merge
 
 def merge_gconvert(frame, source_col, target, target_col, how='inner'):
     printlen(frame, 'records')
@@ -1297,8 +1321,5 @@ def edc(pdb_file, disease_resseq, min_pLDDT=70):
     disease_mindist = [* map(kth_disease_mindist, range(len(disease_atoms))) ]
     healthy_mindist = [ min(healthy_atom - disease_atom for disease_atom in disease_atoms) for healthy_atom in healthy_atoms ]
     return np.mean(np.log(healthy_mindist)) / np.mean(np.log(disease_mindist))
-
-def read_afdb_genes():
-    return pd.read_csv('~/af2genomics/results/human/af2.tsv', sep='\t').query('n_frags == 1')
 
 __all__.extend([name for (name, thing) in locals().items() if callable(thing)]) #https://stackoverflow.com/questions/18451541/getting-a-list-of-locally-defined-functions-in-python

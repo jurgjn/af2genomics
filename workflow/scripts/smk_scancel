@@ -1,2 +1,10 @@
 #!/usr/bin/env bash
-squeue --me --states=RUNNING,PENDING --Format=jobid,name --noheader | grep smina | awk '{print $1}' | xargs scancel
+# squeue --me --states=PENDING --Format jobid --noheader | xargs -n 1 scancel
+# squeue --me --states=RUNNING,PENDING --Format=jobid,name --noheader | grep smina | awk '{print $1}' | xargs scancel
+# squeue --me --states=RUNNING,PENDING --Format=jobid,name --noheader | grep gnina | awk '{print $1}' | xargs scancel
+# squeue --me --states=RUNNING,PENDING --Format=jobid,name --noheader | grep colabfold_batch | awk '{print $1}' | xargs scancel
+# squeue --me --states=PENDING --Format jobid --noheader
+#
+#          squeue --me --states=RUNNING --Format jobid --noheader | awk '{$1=$1};1' | tr '\n' ' '
+# scancel `squeue --me --states=PENDING --Format jobid --noheader | awk '{$1=$1};1' | tr '\n' ' '`
+# scancel `squeue --me --states=RUNNING --Format jobid --noheader | awk '{$1=$1};1' | tr '\n' ' '`

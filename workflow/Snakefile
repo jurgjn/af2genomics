@@ -25,11 +25,8 @@ wildcard_constraints: # Constrain wildcards to prevent rule ambiguities: https:/
     base = r'results\/(\w|\-|_|\.)+', # base directory under results/
 
 include: 'rules/af2.smk'
-include: 'rules/autosite.smk'
 include: 'rules/foldx.smk'
 
 #include: 'targets/human.smk'
 #include: 'targets/yeast.smk'
-#include: 'targets/openfold.smk'
-
-#include: '../results/ligands/diffdock.smk'
+include: 'rules-lig/all.smk'

@@ -4,7 +4,7 @@ set-threads:
   diffdock_out: 1
   diffdock_rescore: 1
   gnina_summary: 1
-  gnina_cl: 16
+  gnina_cl: 64
 set-resources:
   repairpdb:
     runtime: f"{['4h', '1d', '3d', '1w'][attempt - 1]}"
@@ -22,7 +22,7 @@ set-resources:
     runtime: 1d
     mem_mb: 16384
   gnina_cl:
-    runtime: 1d
+    runtime: 3d
     mem_mb: 8192
     # GPU:
     #mem_mb: 4096
