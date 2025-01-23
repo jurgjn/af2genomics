@@ -127,16 +127,20 @@ def g_convert(query=["CASQ2", "CASQ1", "GSTO1", "DMD", "GSTM2"], target='UNIPROT
     df_ = pd.DataFrame(r.json()['result'])
     return df_
 
-def g_merge(left, right, left_on, right_on, organism='hsapiens', target='ENSG', v=False):
+def g_mapping(left, right, left_on, right_on, organism='hsapiens', target='ENSG', v=False):
     if v: printlen(left, left_on)
-    if v: printlen(right, right_on)
-    left_g = left.merge(g_convert(left[left_on].tolist(), organism=organism, target=target)[['incoming', 'converted']].rename({'incoming': left_on, 'converted': target}, axis=1), on=left_on)
-    if v: printlen(left_g, 'after converting left to ENSG including multi-mappings')
+    left_d = left[[left_on]].drop_duplicates(keep='first')
+    if v: printlen(left_d, 'after dedup')
+    left_g = left_d.merge(g_convert(left_d[left_on].tolist(), organism=organism, target=target)[['incoming', 'converted']].rename({'incoming': left_on, 'converted': target}, axis=1), on=left_on)
+    if v: printlen(left_g, f'after converting left to {target} including multi-mappings')
     left_g = left_g.query(f'{target} != "None"')
     if v: printlen(left_g, 'after removing empty mappings')
 
-    right_g = right.merge(g_convert(right[right_on].tolist(), organism=organism, target=target)[['incoming', 'converted']].rename({'incoming': right_on, 'converted': target}, axis=1), on=right_on)
-    if v: printlen(right_g, 'after converting right ENSG including multi-mappings')
+    if v: printlen(right, right_on)
+    right_d = right[[right_on]].drop_duplicates(keep='first')
+    if v: printlen(right_d, 'after dedup')
+    right_g = right_d.merge(g_convert(right_d[right_on].tolist(), organism=organism, target=target)[['incoming', 'converted']].rename({'incoming': right_on, 'converted': target}, axis=1), on=right_on)
+    if v: printlen(right_g, f'after converting right {target} including multi-mappings')
     right_g = right_g.query(f'{target} != "None"')
     if v: printlen(right_g, 'after removing empty mappings')
 
@@ -146,10 +150,16 @@ def g_merge(left, right, left_on, right_on, organism='hsapiens', target='ENSG', 
     m_dup_ = merge.duplicated(subset=left_on, keep=False) | merge.duplicated(subset=right_on, keep=False)
     merge = merge[~m_dup_]
 
-    n_start = min(len(left), len(right))
+    n_start = min(len(left_d), len(right_d))
     n_merge = len(merge)
-    printlen(merge, f'of {uf(n_start)} uniquely mapped over {target}')
+    printlen(merge, f'of {uf(n_start)} unique mappings over {target}')
     return merge
+
+def g_merge(left, right, left_on, right_on, organism='hsapiens', target='ENSG', v=False):
+    mapping = g_mapping(left, right, left_on, right_on, organism, target, v)
+    merged = left.merge(mapping, on=left_on).merge(right, on=right_on)
+    printlen(merged, 'records merging')
+    return merged
 
 def merge_gconvert(frame, source_col, target, target_col, how='inner'):
     printlen(frame, 'records')
