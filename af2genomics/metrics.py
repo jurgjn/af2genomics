@@ -46,63 +46,60 @@ def rgyr(fp_):
     df_['mass'] = df_['mass'] / df_['mass'].sum()
     return math.sqrt(np.dot((df_['dx']**2 + df_['dy']**2 + df_['dz']**2), df_['mass']))
 
-def edc(pdb_file, disease_resseq, healthy_resseq=None, restrict_chain=True, min_atoms=5, min_pLDDT=0, agg_func=np.nanmedian):
+def edc(pdb_file, disease_resseq, feature_resseq=None, healthy_resseq=None, restrict_chain=True, min_atoms=5, min_pLDDT=0, agg_func=np.nanmedian):
     """
     https://doi.org/10.1371/journal.pone.0307312.t001
     > EDC is calculated as previously described [5], however, alpha carbon atoms with a pLDDT < 70 are excluded from the calculation
     > and only proteins with at least 5 pathogenic variants after this procedure are used for the analysis.
     """
+
     def iter_chain_resseq(chain_resseq):
         for chain, resseq in chain_resseq.items():
             for resseq_i in resseq:
                 yield chain, resseq_i
 
     disease_resseq_pairs = list(iter_chain_resseq(disease_resseq))
+    feature_resseq_pairs = disease_resseq_pairs if feature_resseq is None else list(iter_chain_resseq(feature_resseq))
     if not(healthy_resseq is None):
         healthy_resseq_pairs = list(iter_chain_resseq(healthy_resseq))
 
     parser = Bio.PDB.PDBParser(QUIET=True)
     struct = parser.get_structure(pdb_file, pdb_file)
 
-    def is_CA(a):
-        return a.get_id() == 'CA'
-    def is_pLDDT(a):
-        return a.get_bfactor() >= min_pLDDT
+    def get_resseq(a): return a.get_parent().get_id()[1]
+    def get_chain(a): return a.get_parent().get_parent().get_id()
+    def is_CA(a): return a.get_id() == 'CA'
+    def is_pLDDT(a): return a.get_bfactor() >= min_pLDDT
     def check_restrict_chain(a):
         if restrict_chain: # flag set (default), restrict only to atoms from chains with at least one disease mutation (as in original implementation)
-            chain = a.get_parent().get_parent().get_id()
-            return chain in disease_resseq.keys()
+            return get_chain(a) in disease_resseq.keys()
         else:
             return True
 
-    def is_disease(a):
-        resseq = a.get_parent().get_id()[1]
-        chain = a.get_parent().get_parent().get_id()
-        return (chain, resseq) in disease_resseq_pairs
+    def is_disease(a): 
+        return (get_chain(a), get_resseq(a)) in disease_resseq_pairs
+    def is_feature(a): 
+        return (get_chain(a), get_resseq(a)) in feature_resseq_pairs
     def is_healthy(a):
         if not(healthy_resseq is None):
-            resseq = a.get_parent().get_id()[1]
-            chain = a.get_parent().get_parent().get_id()
-            return (chain, resseq) in healthy_resseq_pairs
+            return (get_chain(a), get_resseq(a)) in healthy_resseq_pairs
         else:
             return not is_disease(a)
 
     all_atoms = list(Bio.PDB.Selection.unfold_entities(entity_list=struct[0], target_level='A'))
     filtered_atoms = list(filter(lambda a: is_CA(a) and is_pLDDT(a) and check_restrict_chain(a), all_atoms))
     disease_atoms = list(filter(lambda a: is_disease(a), filtered_atoms))
+    feature_atoms = list(filter(lambda a: is_feature(a), filtered_atoms))
     healthy_atoms = list(filter(lambda a: is_healthy(a), filtered_atoms))
-    #print(len(filtered_atoms), len(disease_atoms), len(healthy_atoms), 'filtered/disease/healthy atoms')
-    if not ((len(disease_atoms) >= min_atoms) and (len(healthy_atoms) >= min_atoms)):
+
+    if not ((len(disease_atoms) >= min_atoms) and (len(feature_atoms) >= min_atoms) and (len(healthy_atoms) >= min_atoms)):
         return float('nan')
 
-    def kth(k, l):
-        return l[k], l[:k] + l[(k + 1):]
-    def kth_disease_mindist(k):
-        atm, etc = kth(k, disease_atoms)
-        return min(atm - atm_etc for atm_etc in etc)
+    def neq_dist(atm1, atm2): return float('nan') if atm1 == atm2 else atm1 - atm2
+    def feature_mindist(atm): return np.nanmin([neq_dist(atm, feature_atm) for feature_atm in feature_atoms])
 
-    disease_mindist = [* map(kth_disease_mindist, range(len(disease_atoms))) ]
-    healthy_mindist = [ min(healthy_atom - disease_atom for disease_atom in disease_atoms) for healthy_atom in healthy_atoms ]
+    disease_mindist = [* map(feature_mindist, disease_atoms) ]
+    healthy_mindist = [* map(feature_mindist, healthy_atoms) ]
     return agg_func(np.log(healthy_mindist)) / agg_func(np.log(disease_mindist))
 
 '''
